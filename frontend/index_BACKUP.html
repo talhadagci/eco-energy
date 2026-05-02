@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MicroGrid Pro Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090b10;
+      --surface: #12151d;
+      --s2: #1c212c;
+      --border: #2d3343;
+      --accent: #007aff;
+      --green: #30d158;
+      --red: #ff453a;
+      --gold: #ffd60a;
+      --text: #ffffff;
+      --muted: #8e8e93;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Outfit', sans-serif; }
+    body { background: var(--bg); color: var(--text); }
+
+    /* Premium Navbar */
+    .navbar {
+      height: 75px; background: rgba(18, 21, 29, 0.8); backdrop-filter: blur(15px);
+      border-bottom: 1px solid var(--border); display: flex; align-items: center; 
+      justify-content: space-between; padding: 0 40px; position: sticky; top: 0; z-index: 1000;
+    }
+    .logo { font-size: 1.6rem; font-weight: 700; background: linear-gradient(45deg, var(--accent), #58a6ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-links { display: flex; gap: 10px; background: var(--s2); padding: 5px; border-radius: 12px; }
+    .tab-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 0.95rem; font-weight: 600; padding: 10px 20px; border-radius: 10px; transition: 0.3s;
+    }
+    .tab-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+    .container { padding: 40px; max-width: 1600px; margin: 0 auto; }
+
+    /* Summary Cards */
+    .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 40px; }
+    .card { background: var(--surface); border: 1px solid var(--border); padding: 30px; border-radius: 20px; transition: 0.3s; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent); opacity: 0.5; }
+    .clabel { color: var(--muted); font-size: 0.95rem; font-weight: 600; margin-bottom: 15px; }
+    .cvalue { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+    .csub { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+
+    /* Dashboard Header */
+    .section-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .legend { display: flex; gap: 20px; background: var(--s2); padding: 12px 25px; border-radius: 40px; border: 1px solid var(--border); }
+    .lg-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* City Grid */
+    .city-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 25px; margin-bottom: 40px; }
+    .node-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 25px; cursor: pointer; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .node-card:hover { transform: translateY(-10px); border-color: var(--accent); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .b-green { border-top: 5px solid var(--green); }
+    .b-yellow { border-top: 5px solid var(--gold); }
+    .b-red { border-top: 5px solid var(--red); }
+    
+    .nc-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; font-weight: 700; font-size: 1.3rem; }
+    .nc-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding: 12px; background: var(--s2); border-radius: 12px; }
+    .nc-val { font-weight: 800; color: var(--accent); }
+
+    /* Charts */
+    .charts-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; margin-bottom: 40px; }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 30px; min-height: 450px; }
+    .chart-container { height: 350px; position: relative; }
+
+    /* Billing Table */
+    .btable { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .btable th { text-align: left; padding: 15px 20px; color: var(--muted); font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+    .btable td { padding: 20px; border-bottom: 1px solid var(--border); }
+    .bar-mini { height: 6px; background: var(--border); border-radius: 3px; margin-top: 10px; width: 120px; margin-left: auto; overflow: hidden; }
+    .bar-mini-fill { height: 100%; transition: 0.6s ease-out; }
+
+    /* Analysis & Forecast Special */
+    .alert { padding: 20px; border-radius: 15px; margin-bottom: 15px; border-left: 6px solid; display: flex; align-items: center; gap: 15px; }
+    .a-red { background: rgba(255, 69, 58, 0.1); border-color: var(--red); }
+    .a-gold { background: rgba(255, 214, 10, 0.1); border-color: var(--gold); }
+    .a-green { background: rgba(48, 209, 88, 0.1); border-color: var(--green); }
+
+    .forecast-item { display: flex; justify-content: space-between; padding: 15px; background: var(--s2); margin-bottom: 10px; border-radius: 12px; border: 1px solid var(--border); }
+
+    #loading { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    .loader { width: 60px; height: 60px; border: 5px solid var(--s2); border-top: 5px solid var(--accent); border-radius: 50%; animation: spin 1s infinite linear; margin-bottom: 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 2000; }
+    .modal-content { background: var(--surface); width: 450px; padding: 40px; border-radius: 30px; border: 1px solid var(--border); position: relative; }
+  </style>
+</head>
+<body>
+
+  <div id="loading"><div class="loader"></div><div>⚡ Sistem Senkronize Ediliyor...</div></div>
+
+  <nav class="navbar">
+    <div class="logo">MicroGrid Pro</div>
+    <div class="nav-links">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('analiz')">Analiz</button>
+      <button class="tab-btn" onclick="switchTab('tahmin')">Tahminler</button>
+      <button class="tab-btn" onclick="switchTab('billing')">Faturalar</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="summary-cards">
+        <div class="card"><div class="clabel">Yıllık Tüketim</div><div class="cvalue" id="m-total">—</div><div class="csub">Toplam Şebeke Yükü</div></div>
+        <div class="card"><div class="clabel">Güneş Üretimi</div><div class="cvalue" id="m-solar" style="color:var(--green)">—</div><div class="csub">Yıllık Ortalama Üretim</div></div>
+        <div class="card"><div class="clabel">Net Enerji Dengesi</div><div class="cvalue" id="m-net">—</div><div class="csub">Tüketim - Üretim Farkı</div></div>
+        <div class="card"><div class="clabel">Sistem Maliyeti</div><div class="cvalue" id="m-bill" style="color:var(--gold)">—</div><div class="csub">Aylık Tahmini Toplam</div></div>
+      </div>
+
+      <div class="section-hdr">
+        <h2>🏙️ Şehir Enerji Haritası</h2>
+        <div class="legend">
+          <div class="lg-item"><span class="dot" style="background:var(--green)"></span> Verimli</div>
+          <div class="lg-item"><span class="dot" style="background:var(--gold)"></span> Orta</div>
+          <div class="lg-item"><span class="dot" style="background:var(--red)"></span> Yüksek</div>
+        </div>
+      </div>
+      <div id="city-grid" class="city-grid"></div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>📈 Detaylı Analiz — <select id="node-sel" onchange="selectNode(this.value)" style="background:none; color:var(--accent); border:none; font-weight:700;"></select></h3>
+          <div class="chart-container"><canvas id="dashboard-chart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Kaynak Dağılımı</h3>
+          <div class="chart-container"><canvas id="bar-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALİZ -->
+    <div id="tab-analiz" style="display:none">
+      <div class="summary-cards">
+        <div class="card"><div class="clabel">Toplam Enerji Akışı</div><div id="ana-total" class="cvalue">—</div></div>
+        <div class="card"><div class="clabel">Pik Tüketim</div><div id="ana-max" class="cvalue">—</div><div id="ana-max-node" class="csub">—</div></div>
+        <div class="card"><div class="clabel">Sistem Verimliliği</div><div class="cvalue" style="color:var(--green)">%94.2</div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><h3>📉 30 Günlük Tüketim Trendi</h3><div class="chart-container"><canvas id="analysis-trend-chart"></canvas></div></div>
+        <div class="chart-card"><h3>📊 Yapı Bazlı Karşılaştırma</h3><div class="chart-container"><canvas id="analysis-bar-chart"></canvas></div></div>
+      </div>
+      <div id="analysis-alerts"></div>
+    </div>
+
+    <!-- TAHMİNLER -->
+    <div id="tab-tahmin" style="display:none">
+      <div class="charts-row">
+        <div class="chart-card" style="flex:2;"><h3>🔮 24 Saatlik Yük Projeksiyonu</h3><div class="chart-container"><canvas id="forecast-detailed-chart"></canvas></div></div>
+        <div class="chart-card" style="flex:1;"><h3>📅 Yarınki Beklenti Listesi</h3><div id="forecast-list" style="overflow-y:auto; max-height:400px;"></div></div>
+      </div>
+    </div>
+
+    <!-- FATURALAR -->
+    <div id="tab-billing" style="display:none">
+      <div class="section-hdr">
+        <div style="display:flex; gap:15px; align-items:center;">
+          <h2 style="margin:0;">🧾 Aylık Fatura Dağılımı</h2>
+          <select id="bill-month-filter" onchange="renderBilling()" style="background:var(--s2); color:var(--accent); border:1px solid var(--border); padding:8px 15px; border-radius:10px; font-weight:700; outline:none;"></select>
+        </div>
+        <div style="font-weight:700; background:var(--s2); padding:10px 20px; border-radius:15px; border:1px solid var(--border);">
+          Toplam Fatura: <span id="bill-total-tl" style="color:var(--gold)">0</span> ₺
+        </div>
+      </div>
+      <div class="chart-card">
+        <table class="btable">
+          <thead><tr><th>Yapı Adı</th><th style="text-align:right">Aylık Tüketim (kWh)</th><th style="text-align:right">Aylık Üretim (kWh)</th><th style="text-align:right">Fatura (TL)</th></tr></thead>
+          <tbody id="bill-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="modal" class="modal"><div class="modal-content" id="modal-body"></div></div>
+
+  <script>
+    const API = window.location.protocol.startsWith('http') ? '' : 'http://localhost:8000';
+    let allNodes = [], historyAll = [], dashboardChart, barChart, analysisTrendChart, analysisBarChart, forecastDetailedChart;
+    const TYPE_ICON = { school: '🏫', mosque: '🕌', house: '🏠' };
+    const TYPE_COLOR = { school: '#ff453a', mosque: '#ffd60a', house: '#007aff' };
+
+    function fmt(val) { return val.toLocaleString('tr-TR', { maximumFractionDigits: 1 }); }
+
+    async function switchTab(name) {
+      ['dashboard', 'analiz', 'tahmin', 'billing'].forEach(t => {
+        const el = document.getElementById('tab-'+t);
+        if(el) el.style.display = (t===name) ? 'block' : 'none';
+      });
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().includes(name.slice(0,3))));
+      if (name === 'analiz') initAnalysisTab();
+      if (name === 'tahmin') initForecastTab();
+      if (name === 'billing') renderBilling();
+    }
+
+    async function load() {
+      try {
+        [allNodes, summary, historyAll] = await Promise.all([
+          fetch(`${API}/nodes`).then(r => r.json()),
+          fetch(`${API}/summary`).then(r => r.json()),
+          fetch(`${API}/history_all`).then(r => r.json())
+        ]);
+        
+        document.getElementById('m-total').textContent = summary.total_current_kwh.toFixed(1) + ' kWh';
+        document.getElementById('m-solar').textContent = summary.total_solar_kwh.toFixed(1) + ' kWh';
+        document.getElementById('m-net').textContent = summary.total_net_kwh.toFixed(1) + ' kWh';
+        document.getElementById('m-bill').textContent = fmt(summary.total_bill_tl) + ' ₺';
+
+        const mSelect = document.getElementById('bill-month-filter');
+        const months = [...new Set(historyAll.map(r => r.date.split('-')[1]))].sort();
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        mSelect.innerHTML = months.map(m => `<option value="${m}" ${m==='04'?'selected':''}>${monthNames[parseInt(m)-1]}</option>`).join('');
+        
+        document.getElementById('node-sel').innerHTML = allNodes.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+        
+        renderGrid();
+        renderBarChart();
+        if (allNodes.length) selectNode(allNodes[0].id);
+        document.getElementById('loading').style.display = 'none';
+      } catch (e) { console.error(e); }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('city-grid');
+      const sorted = allNodes.map(n => n.current_kwh).sort((a,b)=>a-b);
+      const p33 = sorted[Math.floor(sorted.length*0.33)], p66 = sorted[Math.floor(sorted.length*0.66)];
+
+      grid.innerHTML = allNodes.map(n => {
+        const bClass = n.current_kwh <= p33 ? 'b-green' : n.current_kwh <= p66 ? 'b-yellow' : 'b-red';
+        return `
+          <div class="node-card ${bClass}" onclick="openDetail('${n.id}')">
+            <div class="nc-header"><span>${TYPE_ICON[n.type]}</span><span>${n.name}</span></div>
+            <div class="nc-row"><span>Tüketim</span><span class="nc-val">${n.current_kwh.toFixed(1)} kWh</span></div>
+            <div class="nc-row"><span>Üretim</span><span style="color:var(--green)">${n.current_solar_kwh.toFixed(1)} kWh</span></div>
+            <div class="nc-row"><span>Aylık Tahmin</span><span style="color:var(--gold)">${n.predicted_monthly_kwh.toFixed(0)} kWh</span></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectNode(id) {
+      const data = await fetch(`${API}/predict/${id}`).then(r => r.json());
+      const node = allNodes.find(n => n.id === id);
+      const hist = data.history.slice(-24).map(d => d.consumption_kwh);
+      const pred = data.predictions.slice(0, 12).map(d => d.predicted_kwh);
+      const labels = Array.from({length: hist.length + pred.length}, (_, i) => `${i % 24}:00`);
+
+      if (dashboardChart) dashboardChart.destroy();
+      dashboardChart = new Chart(document.getElementById('dashboard-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Geçmiş', data: [...hist, ...Array(pred.length).fill(null)], borderColor: TYPE_COLOR[node.type], fill: true, backgroundColor: TYPE_COLOR[node.type]+'1a', tension: 0.4, pointRadius:0 },
+            { label: 'Tahmin', data: [...Array(hist.length-1).fill(null), hist.at(-1), ...pred], borderColor: '#ffd60a', borderDash:[5,5], tension: 0.4, pointRadius:0 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function renderBarChart() {
+      if (barChart) barChart.destroy();
+      barChart = new Chart(document.getElementById('bar-chart'), {
+        type: 'bar',
+        data: {
+          labels: allNodes.map(n => n.name),
+          datasets: [
+            { label: 'Tüketim', data: allNodes.map(n => n.current_kwh), backgroundColor: allNodes.map(n => TYPE_COLOR[n.type]+'cc') },
+            { label: 'Üretim', data: allNodes.map(n => n.current_solar_kwh), backgroundColor: '#30d15855' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    async function initAnalysisTab() {
+      const data = await fetch(`${API}/analysis`).then(r => r.json());
+      document.getElementById('ana-total').textContent = (data.total_consumption/1000).toFixed(1) + ' MWh';
+      document.getElementById('ana-max').textContent = data.max_consumption.toFixed(1) + ' kWh';
+      const maxId = Object.entries(data.node_comparison).reduce((a,b) => a[1]>b[1]?a:b)[0];
+      document.getElementById('ana-max-node').textContent = allNodes.find(n => n.id === maxId)?.name || '';
+
+      const dates = [...new Set(historyAll.map(r => r.date))].sort().slice(-30);
+      const trend = dates.map(d => historyAll.filter(r => r.date === d).reduce((s,r) => s+r.consumption_kwh, 0));
+      if (analysisTrendChart) analysisTrendChart.destroy();
+      analysisTrendChart = new Chart(document.getElementById('analysis-trend-chart'), {
+        type: 'line',
+        data: { labels: dates.map(d => d.split('-').slice(1).join('/')), datasets: [{ label: 'Sistem Yükü', data: trend, borderColor: '#007aff', fill: true, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      document.getElementById('analysis-alerts').innerHTML = `
+        <div class="alert a-red">🚨 <b>Kritik Uyarı:</b> Bazı binalarda tüketim limiti aşıldı!</div>
+        <div class="alert a-gold">📈 <b>Sistem Notu:</b> Gelecek ay için %4 tüketim artışı öngörülüyor.</div>
+        <div class="alert a-green">☀️ <b>Enerji Verimliliği:</b> Bugün toplam ihtiyacın %14'ü güneşten karşılandı.</div>
+      `;
+    }
+
+    function initForecastTab() {
+      const labels = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
+      const basePred = [45, 40, 55, 120, 150, 140, 130, 90];
+      if (forecastDetailedChart) forecastDetailedChart.destroy();
+      forecastDetailedChart = new Chart(document.getElementById('forecast-detailed-chart'), {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Tahmini Yük (3 Sa.)', data: basePred, borderColor: '#ffd60a', fill: true, backgroundColor: '#ffd60a1a' }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+      document.getElementById('forecast-list').innerHTML = allNodes.map(n => `
+        <div class="forecast-item"><span>${n.name}</span><span style="color:var(--gold)">${n.predicted_next_day_kwh} kWh</span></div>
+      `).join('');
+    }
+
+    function renderBilling() {
+      const selectedMonth = document.getElementById('bill-month-filter').value;
+      const filtered = historyAll.filter(r => r.date.split('-')[1] === selectedMonth);
+      
+      const nodeData = {};
+      allNodes.forEach(n => nodeData[n.id] = { cons: 0, solar: 0 });
+      filtered.forEach(r => {
+        if(nodeData[r.node_id]) {
+          nodeData[r.node_id].cons += r.consumption_kwh;
+          nodeData[r.node_id].solar += r.solar_kwh;
+        }
+      });
+
+      const tableData = allNodes.map(n => {
+        const stats = nodeData[n.id];
+        const net = Math.max(0, stats.cons - stats.solar);
+        const bill = net * 2.85;
+        return { n, cons: stats.cons, solar: stats.solar, bill };
+      }).sort((a,b) => b.cons - a.cons);
+
+      const maxC = Math.max(...tableData.map(x => x.cons), 1);
+      const maxS = Math.max(...tableData.map(x => x.solar), 1);
+      
+      let totalBill = 0;
+      document.getElementById('bill-tbody').innerHTML = tableData.map(d => {
+        totalBill += d.bill;
+        return `
+        <tr onclick="openDetail('${d.n.id}')">
+          <td style="font-weight:600">${d.n.name}</td>
+          <td style="text-align:right">${d.cons.toFixed(1)} <div class="bar-mini"><div class="bar-mini-fill" style="width:${(d.cons/maxC)*100}%; background:var(--accent)"></div></div></td>
+          <td style="text-align:right; color:var(--green)">${d.solar.toFixed(1)} <div class="bar-mini"><div class="bar-mini-fill" style="width:${(d.solar/maxS)*100}%; background:var(--green)"></div></div></td>
+          <td style="text-align:right; font-weight:700; color:var(--gold)">${fmt(d.bill)} ₺</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('bill-total-tl').textContent = fmt(totalBill);
+    }
+
+    function openDetail(id) {
+      const n = allNodes.find(x => x.id === id);
+      document.getElementById('modal-body').innerHTML = `
+        <h2 style="margin-bottom:20px; color:var(--accent)">${n.name} Özeti</h2>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="nc-row"><span>Günlük Tüketim</span><span>${n.current_kwh.toFixed(1)} kWh</span></div>
+          <div class="nc-row"><span>Güneş Üretimi</span><span style="color:var(--green)">${n.current_solar_kwh.toFixed(1)} kWh</span></div>
+          <div class="nc-row" style="border-top:1px solid var(--border); padding-top:15px; margin-top:5px;">
+            <span style="font-weight:700">Aylık Tahmini Fatura</span><span style="color:var(--gold); font-weight:800">${fmt(n.bill_tl)} ₺</span>
+          </div>
+        </div>
+        <button onclick="closeModal()" style="width:100%; padding:15px; margin-top:25px; background:var(--s2); border:1px solid var(--border); color:white; border-radius:15px; cursor:pointer;">Kapat</button>
+      `;
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+    load();
+  </script>
+</body>
+</html>

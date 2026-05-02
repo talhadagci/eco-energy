@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoNode Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090b10;
+      --surface: #12151d;
+      --s2: #1c212c;
+      --border: #2d3343;
+      --accent: #007aff;
+      --green: #30d158;
+      --red: #ff453a;
+      --gold: #ffd60a;
+      --text: #ffffff;
+      --muted: #8e8e93;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Outfit', sans-serif; }
+    body { background: var(--bg); color: var(--text); }
+
+    /* Premium Navbar */
+    .navbar {
+      height: 75px; background: rgba(18, 21, 29, 0.8); backdrop-filter: blur(15px);
+      border-bottom: 1px solid var(--border); display: flex; align-items: center; 
+      justify-content: space-between; padding: 0 40px; position: sticky; top: 0; z-index: 1000;
+    }
+    .logo { font-size: 1.6rem; font-weight: 700; background: linear-gradient(45deg, var(--accent), #58a6ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-links { display: flex; gap: 10px; background: var(--s2); padding: 5px; border-radius: 12px; }
+    .tab-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 0.95rem; font-weight: 600; padding: 10px 20px; border-radius: 10px; transition: 0.3s;
+    }
+    .tab-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+    .container { padding: 40px; max-width: 1600px; margin: 0 auto; }
+
+    /* Summary Cards */
+    .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 40px; }
+    .card { background: var(--surface); border: 1px solid var(--border); padding: 30px; border-radius: 20px; transition: 0.3s; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent); opacity: 0.5; }
+    .clabel { color: var(--muted); font-size: 0.95rem; font-weight: 600; margin-bottom: 15px; }
+    .cvalue { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+    .csub { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+
+    /* Dashboard Header */
+    .section-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .legend { display: flex; gap: 20px; background: var(--s2); padding: 12px 25px; border-radius: 40px; border: 1px solid var(--border); }
+    .lg-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* City Grid */
+    .city-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 25px; margin-bottom: 40px; }
+    .node-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 25px; cursor: pointer; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .node-card:hover { transform: translateY(-10px); border-color: var(--accent); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .b-green { border-top: 5px solid var(--green); }
+    .b-yellow { border-top: 5px solid var(--gold); }
+    .b-red { border-top: 5px solid var(--red); }
+    
+    .nc-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; font-weight: 700; font-size: 1.3rem; }
+    .nc-row { display: flex; justify-content: space-between; margin-bottom: 12px; padding: 12px; background: var(--s2); border-radius: 12px; }
+    .nc-val { font-weight: 800; color: var(--accent); }
+
+    /* Charts */
+    .charts-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; margin-bottom: 40px; }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 30px; min-height: 450px; }
+    .chart-container { height: 350px; position: relative; }
+
+    /* Billing Table */
+    .btable { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .btable th { text-align: left; padding: 15px 20px; color: var(--muted); font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+    .btable td { padding: 20px; border-bottom: 1px solid var(--border); }
+    .bar-mini { height: 6px; background: var(--border); border-radius: 3px; margin-top: 10px; width: 120px; margin-left: auto; overflow: hidden; }
+    .bar-mini-fill { height: 100%; transition: 0.6s ease-out; }
+
+    /* Analysis & Forecast Special */
+    .alert { padding: 20px; border-radius: 15px; margin-bottom: 15px; border-left: 6px solid; display: flex; align-items: center; gap: 15px; }
+    .a-red { background: rgba(255, 69, 58, 0.1); border-color: var(--red); }
+    .a-gold { background: rgba(255, 214, 10, 0.1); border-color: var(--gold); }
+    .a-green { background: rgba(48, 209, 88, 0.1); border-color: var(--green); }
+
+    .ana-mode-bar { display:flex; justify-content:center; margin-bottom:30px; }
+    .ana-mode-inner { background:var(--s2); padding:5px; border-radius:12px; display:flex; gap:5px; border:1px solid var(--border); flex-wrap:wrap; justify-content:center; }
+
+    .ratio-row { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:var(--s2); border-radius:12px; margin-bottom:10px; border:1px solid var(--border); }
+    .ratio-bar-wrap { width:180px; height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .ratio-bar-fill { height:100%; border-radius:4px; transition:.6s; }
+
+
+    .co2-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; margin-bottom:30px; }
+    .co2-card { background:var(--s2); border:1px solid var(--border); border-radius:18px; padding:25px; text-align:center; }
+    .co2-val { font-size:2rem; font-weight:800; margin:10px 0 5px; }
+    .co2-lbl { color:var(--muted); font-size:.9rem; }
+
+    .forecast-item { display: flex; justify-content: space-between; padding: 15px; background: var(--s2); margin-bottom: 10px; border-radius: 12px; border: 1px solid var(--border); }
+
+    #loading { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    .loader { width: 60px; height: 60px; border: 5px solid var(--s2); border-top: 5px solid var(--accent); border-radius: 50%; animation: spin 1s infinite linear; margin-bottom: 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 2000; }
+    .modal-content { background: var(--surface); width: 450px; padding: 40px; border-radius: 30px; border: 1px solid var(--border); position: relative; }
+
+    /* ══════════════ EDA SECTION ══════════════ */
+    .eda-node-scroll { display:flex; gap:12px; overflow-x:auto; padding:4px 2px 14px; margin-bottom:22px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+    .eda-node-card { flex-shrink:0; background:var(--s2); border:2px solid var(--border); border-radius:18px; padding:16px 20px; cursor:pointer; transition:.3s cubic-bezier(.4,0,.2,1); min-width:110px; text-align:center; }
+    .eda-node-card:hover { border-color:var(--accent); transform:translateY(-4px); box-shadow:0 12px 30px rgba(0,0,0,.4); }
+    .eda-node-card.selected { border-color:var(--accent); background:rgba(0,122,255,.12); box-shadow:0 0 24px rgba(0,122,255,.28); transform:translateY(-4px); }
+    .eda-node-icon { font-size:1.8rem; margin-bottom:7px; }
+    .eda-node-name { font-size:.8rem; font-weight:700; }
+    .eda-node-sub { font-size:.7rem; color:var(--muted); margin-top:3px; }
+
+    .eda-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:18px; margin-bottom:22px; }
+    .eda-kpi { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px; position:relative; overflow:hidden; }
+    .eda-kpi::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--kpi-color,var(--accent)); }
+    .eda-kpi-label { color:var(--muted); font-size:.83rem; font-weight:600; margin-bottom:9px; }
+    .eda-kpi-value { font-size:1.75rem; font-weight:800; color:var(--kpi-color,var(--text)); letter-spacing:-.5px; }
+    .eda-kpi-sub { font-size:.76rem; color:var(--muted); margin-top:5px; }
+
+    .eda-charts-row { display:grid; grid-template-columns:1.6fr 1fr; gap:22px; margin-bottom:22px; }
+    @media(max-width:900px){ .eda-charts-row{grid-template-columns:1fr;} }
+    .eda-chart-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:26px; }
+    .eda-chart-card h3 { margin-bottom:18px; font-size:.97rem; }
+    .eda-chart-wrap { height:270px; position:relative; }
+
+    .eda-extremes { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
+    @media(max-width:640px){ .eda-extremes{grid-template-columns:1fr;} }
+    .eda-extreme-card { border-radius:18px; padding:22px; border:1px solid; }
+    .eda-extreme-max { background:rgba(255,69,58,.07); border-color:rgba(255,69,58,.22); }
+    .eda-extreme-min { background:rgba(48,209,88,.07); border-color:rgba(48,209,88,.22); }
+    .eda-extreme-badge { font-size:.73rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+    .eda-extreme-month { font-size:1.5rem; font-weight:800; }
+    .eda-extreme-val { font-size:.83rem; color:var(--muted); margin-top:5px; }
+
+    .eda-change-section { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:26px; margin-bottom:22px; }
+    .eda-change-section h3 { margin-bottom:16px; font-size:.97rem; }
+    .eda-change-list { display:flex; flex-wrap:wrap; gap:9px; }
+    .eda-change-pill { padding:7px 13px; border-radius:20px; font-size:.8rem; font-weight:700; border:1px solid; transition:.2s; }
+    .eda-pill-up   { background:rgba(255,69,58,.1);  border-color:rgba(255,69,58,.28);  color:var(--red);  }
+    .eda-pill-down { background:rgba(48,209,88,.1);  border-color:rgba(48,209,88,.28);  color:var(--green);}
+    .eda-pill-flat { background:rgba(255,214,10,.1); border-color:rgba(255,214,10,.28); color:var(--gold); }
+
+    .eda-insights { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:26px; margin-bottom:22px; }
+    .eda-insights h3 { margin-bottom:16px; font-size:.97rem; }
+    .eda-insight-item { display:flex; align-items:flex-start; gap:12px; padding:13px 15px; background:var(--s2); border-radius:13px; margin-bottom:9px; border-left:4px solid; }
+    .eda-insight-text { font-size:.86rem; line-height:1.55; }
+
+    .eda-empty { text-align:center; padding:70px 20px; color:var(--muted); }
+    .eda-empty-icon { font-size:3.5rem; margin-bottom:16px; }
+    .eda-empty-text { font-size:1rem; }
+
+    /* ══════════════ FORECAST TAB ══════════════ */
+    .fcst-node-scroll { display:flex; gap:12px; overflow-x:auto; padding:4px 2px 16px; margin-bottom:26px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+    .fcst-node-card { flex-shrink:0; background:var(--s2); border:2px solid var(--border); border-radius:18px; padding:16px 22px; cursor:pointer; transition:.3s cubic-bezier(.4,0,.2,1); min-width:110px; text-align:center; }
+    .fcst-node-card:hover { border-color:var(--accent); transform:translateY(-5px); box-shadow:0 14px 32px rgba(0,0,0,.45); }
+    .fcst-node-card.selected { border-color:var(--accent); background:rgba(0,122,255,.13); box-shadow:0 0 26px rgba(0,122,255,.3); transform:translateY(-5px); }
+    .fcst-node-icon { font-size:1.9rem; margin-bottom:8px; }
+    .fcst-node-name { font-size:.82rem; font-weight:700; }
+    .fcst-node-sub  { font-size:.72rem; color:var(--muted); margin-top:4px; }
+
+    .fcst-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:20px; margin-bottom:28px; }
+    .fcst-info-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:24px 26px; position:relative; overflow:hidden; }
+    .fcst-info-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--fcst-accent,var(--accent)); }
+    .fcst-info-label { color:var(--muted); font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin-bottom:10px; }
+    .fcst-info-value { font-size:1.55rem; font-weight:800; letter-spacing:-.5px; margin-bottom:6px; }
+    .fcst-info-sub   { font-size:.78rem; color:var(--muted); line-height:1.5; }
+
+    .fcst-trend-up   { color:var(--red);   }
+    .fcst-trend-down { color:var(--green); }
+    .fcst-trend-flat { color:var(--muted); }
+
+    .fcst-acc-bar-wrap { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:10px; }
+    .fcst-acc-bar-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--accent),var(--green)); transition:.8s ease-out; }
+
+    .fcst-main-row   { display:grid; grid-template-columns:2fr 1fr; gap:25px; margin-bottom:28px; }
+    @media(max-width:960px){ .fcst-main-row{grid-template-columns:1fr;} }
+
+    .fcst-bottom-row { display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-bottom:28px; }
+    @media(max-width:900px){ .fcst-bottom-row{grid-template-columns:1fr;} }
+
+    .fcst-alert-item { display:flex; align-items:flex-start; gap:14px; padding:16px 18px; border-radius:14px; margin-bottom:12px; border-left:4px solid; }
+    .fcst-alert-high    { background:rgba(255,69,58,.09); border-color:var(--red); }
+    .fcst-alert-warning { background:rgba(255,214,10,.09); border-color:var(--gold); }
+    .fcst-alert-info    { background:rgba(0,122,255,.09); border-color:var(--accent); }
+    .fcst-alert-good    { background:rgba(48,209,88,.09); border-color:var(--green); }
+    .fcst-alert-icon  { font-size:1.3rem; flex-shrink:0; margin-top:2px; }
+    .fcst-alert-text  { font-size:.85rem; line-height:1.55; }
+
+    .fcst-node-row { display:flex; align-items:center; gap:12px; padding:13px 16px; background:var(--s2); border-radius:13px; margin-bottom:10px; border:1px solid var(--border); transition:.2s; }
+    .fcst-node-row:hover { border-color:var(--border); background:rgba(255,255,255,.03); }
+    .fcst-node-highlight { border-color:rgba(255,69,58,.4) !important; background:rgba(255,69,58,.07) !important; }
+    .fcst-node-row-icon  { font-size:1.1rem; flex-shrink:0; }
+    .fcst-node-row-name  { font-size:.85rem; font-weight:600; min-width:60px; flex:1; }
+    .fcst-node-row-bar   { flex:2; height:7px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .fcst-node-row-fill  { height:100%; border-radius:4px; transition:.7s ease-out; }
+    .fcst-node-row-val   { font-size:.85rem; font-weight:700; min-width:78px; text-align:right; }
+    .fcst-node-badge     { font-size:.7rem; background:rgba(255,69,58,.18); color:var(--red); border-radius:6px; padding:2px 7px; font-weight:700; margin-left:4px; }
+
+    .fcst-skeleton { background:linear-gradient(90deg,var(--s2) 25%,rgba(255,255,255,.04) 50%,var(--s2) 75%); background-size:200% 100%; animation:fcst-shimmer 1.4s infinite; border-radius:8px; height:16px; }
+    @keyframes fcst-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* ML Pipeline card */
+    .fcst-pipeline-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:26px 30px; margin-bottom:26px; }
+    .fcst-pipeline-header { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+    .fcst-pipeline-title { font-size:.9rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+    .fcst-pipeline-badge { background:rgba(0,122,255,.15); color:var(--accent); border:1px solid rgba(0,122,255,.3); border-radius:20px; padding:3px 12px; font-size:.72rem; font-weight:700; }
+    .fcst-pipeline-flow { display:flex; align-items:center; gap:0; flex-wrap:wrap; gap:8px; }
+    .fcst-pipe-inputs { display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+    .fcst-pipe-input { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:9px 14px; font-size:.82rem; font-weight:600; white-space:nowrap; }
+    .fcst-pipe-new { border-color:rgba(255,214,10,.4); background:rgba(255,214,10,.06); }
+    .fcst-pipe-new-tag { background:var(--gold); color:#000; border-radius:4px; padding:1px 5px; font-size:.62rem; font-weight:800; margin-left:6px; }
+    .fcst-pipe-arrows { display:flex; align-items:center; gap:6px; flex:1; min-width:200px; padding:0 8px; }
+    .fcst-pipe-line { flex:1; height:2px; background:linear-gradient(90deg,var(--border),var(--accent)); min-width:20px; }
+    .fcst-pipe-box { background:var(--s2); border:1px solid var(--accent); border-radius:12px; padding:12px 18px; text-align:center; font-size:.78rem; font-weight:700; color:var(--accent); white-space:nowrap; flex-shrink:0; }
+    .fcst-pipe-box-model { background:linear-gradient(135deg,rgba(0,122,255,.15),rgba(48,209,88,.1)); border-color:var(--green); color:var(--green); }
+    .fcst-pipe-box-sub { font-size:.68rem; color:var(--muted); font-weight:400; margin-top:3px; }
+    .fcst-pipe-output { background:linear-gradient(135deg,rgba(255,214,10,.12),rgba(255,214,10,.06)); border:1px solid rgba(255,214,10,.35); border-radius:14px; padding:14px 20px; text-align:center; flex-shrink:0; }
+    .fcst-pipe-out-icon { font-size:1.6rem; margin-bottom:4px; }
+    .fcst-pipe-out-label { font-size:.85rem; font-weight:700; color:var(--gold); }
+    .fcst-pipe-out-sub { font-size:.72rem; color:var(--muted); margin-top:2px; }
+    @media(max-width:900px){ .fcst-pipe-arrows{min-width:unset;} .fcst-pipeline-flow{flex-direction:column;align-items:flex-start;} }
+
+    /* Scenario bar */
+    .fcst-scenario-bar { display:flex; align-items:center; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+    .fcst-scenario-label { color:var(--muted); font-size:.85rem; font-weight:600; }
+    .fcst-scenario-btn { background:var(--s2); border:1px solid var(--border); color:var(--muted); border-radius:10px; padding:9px 18px; cursor:pointer; font-family:inherit; font-size:.84rem; font-weight:600; transition:.25s; }
+    .fcst-scenario-btn:hover { border-color:var(--accent); color:var(--text); }
+    .fcst-scenario-btn.active { background:rgba(0,122,255,.14); border-color:var(--accent); color:var(--accent); }
+    .fcst-scenario-info { color:var(--muted); font-size:.78rem; margin-left:6px; }
+
+    /* Feature importance */
+    .fcst-feat-item { margin-bottom:14px; }
+    .fcst-feat-header { display:flex; justify-content:space-between; margin-bottom:5px; font-size:.83rem; }
+    .fcst-feat-name { font-weight:600; }
+    .fcst-feat-pct { font-weight:700; color:var(--accent); }
+    .fcst-feat-bar-wrap { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .fcst-feat-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--green)); transition:.8s ease-out; }
+
+    /* Chart legend custom */
+    .fcst-chart-legend { display:flex; gap:18px; margin-bottom:14px; flex-wrap:wrap; }
+    .fcst-legend-item { display:flex; align-items:center; gap:7px; font-size:.78rem; color:var(--muted); }
+    .fcst-legend-line { display:inline-block; width:22px; height:3px; border-radius:2px; }
+    .fcst-l-hist { background:#007aff; }
+    .fcst-l-pred { background:#ffd60a; border-top: none; background: repeating-linear-gradient(90deg,#ffd60a 0,#ffd60a 6px,transparent 6px,transparent 10px); height:2px; }
+    .fcst-legend-ci { display:inline-block; width:22px; height:10px; border-radius:3px; background:rgba(255,214,10,0.25); border:1px solid rgba(255,214,10,0.5); }
+
+    /* Backtest accuracy badge */
+    .fcst-bt-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:700; }
+    .fcst-bt-good { background:rgba(48,209,88,.15); color:var(--green); }
+    .fcst-bt-warn { background:rgba(255,214,10,.15); color:var(--gold); }
+    .fcst-bt-bad  { background:rgba(255,69,58,.15); color:var(--red); }
+
+    /* ══════════════ SİMÜLASYON TAB ══════════════ */
+    .sim-top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:25px; }
+    .sim-start-btn {
+      background:linear-gradient(135deg,#30d158,#007aff); border:none; color:#fff; padding:14px 36px;
+      border-radius:14px; font-size:1rem; font-weight:800; cursor:pointer; letter-spacing:.5px;
+      box-shadow:0 6px 20px rgba(48,209,88,.3); transition:.3s;
+    }
+    .sim-start-btn:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(48,209,88,.4); }
+    .sim-start-btn.running { background:linear-gradient(135deg,#ff453a,#ff6961); box-shadow:0 6px 20px rgba(255,69,58,.3); }
+    .sim-global-bar {
+      background:var(--s2); border:1px solid var(--border); border-radius:16px;
+      padding:16px 24px; display:flex; justify-content:space-around; flex-wrap:wrap; gap:12px; margin-bottom:25px;
+    }
+    .sim-gstat { text-align:center; }
+    .sim-gstat-lbl { font-size:.78rem; color:var(--muted); margin-bottom:4px; }
+    .sim-gstat-val { font-size:1.15rem; font-weight:800; }
+
+    .sim-world { position:relative; background:radial-gradient(circle,#0d0d0d,#000); border-radius:20px; border:1px solid var(--border); padding:30px; min-height:520px; overflow:hidden; margin-bottom:25px; }
+    .sim-svg-overlay { position:absolute; inset:0; pointer-events:none; z-index:1; }
+    .sim-energy-line { stroke-width:2; fill:none; opacity:0; }
+    .sim-energy-line.active { opacity:1; }
+    .sim-particle { fill:#30d158; filter:url(#sim-glow); }
+
+    @keyframes sim-pulse { 0%,100%{ opacity:.3; r:3; } 50%{ opacity:1; r:5; } }
+
+    .sim-grid8 {
+      display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr;
+      grid-template-rows:auto 40px auto; gap:0; position:relative; z-index:2;
+    }
+    .sim-road { background:#161616; position:relative; }
+    .sim-road-h::after { content:''; position:absolute; top:50%; left:0; width:100%; height:2px; border-top:2px dashed #2a2a2a; }
+    .sim-road-v::after { content:''; position:absolute; left:50%; top:0; width:2px; height:100%; border-left:2px dashed #2a2a2a; }
+
+    .sim-bldg {
+      background:var(--surface); border:2px solid var(--border); border-radius:18px;
+      padding:18px 10px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      cursor:pointer; transition:.35s; position:relative; min-height:150px;
+    }
+    .sim-bldg:hover { border-color:var(--accent); transform:translateY(-4px); }
+    .sim-bldg.sim-active { border-color:var(--accent); box-shadow:0 0 24px rgba(0,122,255,.25); }
+    .sim-bldg.sim-surplus { border-color:var(--green); box-shadow:0 0 16px rgba(48,209,88,.15); }
+    .sim-bldg.sim-deficit { border-color:var(--red); box-shadow:0 0 16px rgba(255,69,58,.15); }
+    .sim-bldg.sim-balanced { border-color:var(--gold); }
+    .sim-bldg-icon { font-size:2rem; margin-bottom:6px; }
+    .sim-bldg-name { font-weight:700; font-size:.85rem; text-align:center; }
+    .sim-bldg-vals { font-size:.7rem; color:var(--muted); margin-top:6px; text-align:center; line-height:1.5; }
+    .sim-bldg-stat { font-size:.65rem; margin-top:5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+
+    .sim-detail-panel { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:30px; }
+    .sim-section { background:var(--s2); border-radius:16px; padding:20px; border:1px solid var(--border); margin-bottom:18px; }
+    .sim-section-title { font-size:1rem; font-weight:800; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+    .sim-metrics { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    .sim-metric { background:var(--bg); padding:12px; border-radius:12px; border:1px solid var(--border); text-align:center; }
+    .sim-m-lbl { font-size:.7rem; color:var(--muted); font-weight:600; margin-bottom:3px; }
+    .sim-m-val { font-size:1rem; font-weight:800; }
+  </style>
+</head>
+<body>
+
+  <div id="loading"><div class="loader"></div><div>⚡ Sistem Senkronize Ediliyor...</div></div>
+
+  <nav class="navbar">
+    <div class="logo">EcoNode</div>
+    <div class="nav-links">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('analiz')">Analiz</button>
+      <button class="tab-btn" onclick="switchTab('tahmin')">Tahminler</button>
+      <button class="tab-btn" onclick="switchTab('billing')">Faturalar</button>
+      <button class="tab-btn" onclick="switchTab('sim')">Simülasyon</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="summary-cards">
+        <div class="card"><div class="clabel">Yıllık Tüketim</div><div class="cvalue" id="m-total">—</div><div class="csub">Toplam Şebeke Yükü</div></div>
+        <div class="card"><div class="clabel">Güneş Üretimi</div><div class="cvalue" id="m-solar" style="color:var(--green)">—</div><div class="csub">Yıllık Ortalama Üretim</div></div>
+        <div class="card"><div class="clabel">Net Enerji Dengesi</div><div class="cvalue" id="m-net">—</div><div class="csub">Tüketim - Üretim Farkı</div></div>
+        <div class="card"><div class="clabel">Sistem Maliyeti</div><div class="cvalue" id="m-bill" style="color:var(--gold)">—</div><div class="csub">Aylık Tahmini Toplam</div></div>
+      </div>
+
+      <div class="section-hdr">
+        <h2>🏙️ Şehir Enerji Haritası</h2>
+        <div class="legend">
+          <div class="lg-item"><span class="dot" style="background:var(--green)"></span> Verimli</div>
+          <div class="lg-item"><span class="dot" style="background:var(--gold)"></span> Orta</div>
+          <div class="lg-item"><span class="dot" style="background:var(--red)"></span> Yüksek</div>
+        </div>
+      </div>
+      <div id="city-grid" class="city-grid"></div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>📈 Detaylı Analiz — <select id="node-sel" onchange="selectNode(this.value)" style="background:none; color:var(--accent); border:none; font-weight:700;"></select></h3>
+          <div class="chart-container"><canvas id="dashboard-chart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Kaynak Dağılımı</h3>
+          <div class="chart-container"><canvas id="bar-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALİZ -->
+    <div id="tab-analiz" style="display:none">
+      <div class="ana-mode-bar">
+        <div class="ana-mode-inner">
+          <button id="btn-ana-node"    class="tab-btn active" onclick="setAnalysisMode('node')"    style="font-size:0.85rem;padding:8px 15px;">🏠 Yapı Bazlı</button>
+          <button id="btn-ana-month"   class="tab-btn"        onclick="setAnalysisMode('month')"   style="font-size:0.85rem;padding:8px 15px;">📅 Aylık</button>
+          <button id="btn-ana-type"    class="tab-btn"        onclick="setAnalysisMode('type')"    style="font-size:0.85rem;padding:8px 15px;">🏗️ Tür Analizi</button>
+          <button id="btn-ana-solar"   class="tab-btn"        onclick="setAnalysisMode('solar')"   style="font-size:0.85rem;padding:8px 15px;">☀️ Güneş & CO2</button>
+          <button id="btn-ana-eda"     class="tab-btn"        onclick="setAnalysisMode('eda')"     style="font-size:0.85rem;padding:8px 15px;background:linear-gradient(135deg,rgba(0,122,255,.18),rgba(48,209,88,.12));border:1px solid rgba(0,122,255,.35);">📊 Node EDA</button>
+        </div>
+      </div>
+
+      <!-- Yapı Bazlı -->
+      <div id="ana-node-section">
+        <div class="summary-cards">
+          <div class="card"><div class="clabel">90 Günlük Toplam Tüketim</div><div id="ana-total" class="cvalue">—</div></div>
+          <div class="card"><div class="clabel">Pik Tüketim Günü</div><div id="ana-max" class="cvalue">—</div><div id="ana-max-node" class="csub">—</div></div>
+          <div class="card"><div class="clabel">Toplam Güneş Üretimi</div><div id="ana-solar-total" class="cvalue" style="color:var(--green)">—</div></div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 90 Günlük Yapı Bazlı Karşılaştırma</h3>
+          <div class="chart-container"><canvas id="analysis-bar-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Aylık -->
+      <div id="ana-month-section" style="display:none">
+        <div class="summary-cards">
+          <div class="card"><div class="clabel">Son Ay Toplam</div><div id="ana-month-total" class="cvalue">—</div><div class="csub">kWh</div></div>
+          <div class="card"><div class="clabel">Değişim Oranı</div><div id="ana-month-change" class="cvalue">—</div><div class="csub">Geçen Aya Göre</div></div>
+          <div class="card"><div class="clabel">Son Ay Fatura</div><div id="ana-month-bill" class="cvalue">—</div><div class="csub">₺</div></div>
+        </div>
+        <div class="chart-card">
+          <h3>📉 Aylık Tüketim & Güneş Trendi (90 Gün)</h3>
+          <div class="chart-container"><canvas id="analysis-month-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tür Analizi -->
+      <div id="ana-type-section" style="display:none">
+        <div class="summary-cards" id="ana-type-cards"></div>
+        <div class="chart-card" style="margin-top:25px;">
+          <h3>🏗️ Yapı Türüne Göre Tüketim & Üretim</h3>
+          <div class="chart-container"><canvas id="analysis-type-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Güneş & CO2 -->
+      <div id="ana-solar-section" style="display:none">
+        <div class="co2-grid" id="co2-summary-cards"></div>
+        <div class="chart-card" style="margin-bottom:25px;">
+          <h3>☀️ Bina Bazlı Güneş Katkı Oranı (%)</h3>
+          <div id="solar-ratio-list" style="max-height:500px;overflow-y:auto;margin-top:15px;"></div>
+        </div>
+        <div class="chart-card">
+          <h3>🌱 Bina Bazlı CO2 Tasarrufu (kg)</h3>
+          <div class="chart-container"><canvas id="co2-bar-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Node EDA -->
+      <div id="ana-eda-section" style="display:none">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:26px;margin-bottom:22px;">
+          <h3 style="margin-bottom:15px;font-size:.97rem;">🏘️ Analiz Edilecek Node'u Seç</h3>
+          <div class="eda-node-scroll" id="eda-node-scroll"></div>
+          <p style="font-size:.78rem;color:var(--muted);margin:0">Karta tıkla → tüm grafikler o node'a özel güncellenir</p>
+        </div>
+        <div id="eda-dynamic-content">
+          <div class="eda-empty">
+            <div class="eda-empty-icon">👆</div>
+            <div class="eda-empty-text">Yukarıdan bir node seçin</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAHMİNLER -->
+    <div id="tab-tahmin" style="display:none">
+
+      <!-- Başlık -->
+      <div class="section-hdr" style="margin-bottom:20px;">
+        <h2>🤖 ML Tahmin Motoru</h2>
+        <span id="fcst-last-updated" style="color:var(--muted);font-size:.83rem;"></span>
+      </div>
+
+      <!-- Node seçici -->
+      <div class="fcst-node-scroll" id="fcst-node-scroll"></div>
+
+      <!-- ML Pipeline Açıklaması -->
+      <div class="fcst-pipeline-card">
+        <div class="fcst-pipeline-header">
+          <span class="fcst-pipeline-title">Model Pipeline</span>
+          <span class="fcst-pipeline-badge" id="fcst-pipe-badge">14 özellik · Polynomial degree=2</span>
+        </div>
+        <div class="fcst-pipeline-flow">
+          <div class="fcst-pipe-inputs">
+            <div class="fcst-pipe-input">📅 Haftanın Günü</div>
+            <div class="fcst-pipe-input">🗓️ Yılın Günü</div>
+            <div class="fcst-pipe-input">📊 Son 7g Ortalama</div>
+            <div class="fcst-pipe-input">🔥 Son 3g Ortalama</div>
+          </div>
+          <div class="fcst-pipe-arrows">
+            <div class="fcst-pipe-line"></div>
+            <div class="fcst-pipe-box">
+              Polynomial<br>Features
+              <div class="fcst-pipe-box-sub">4 giriş → 14 özellik</div>
+            </div>
+            <div class="fcst-pipe-line"></div>
+            <div class="fcst-pipe-box fcst-pipe-box-model">
+              Linear<br>Regression
+              <div class="fcst-pipe-box-sub" id="fcst-pipe-acc-sub">acc: —%</div>
+            </div>
+            <div class="fcst-pipe-line"></div>
+          </div>
+          <div class="fcst-pipe-output">
+            <div class="fcst-pipe-out-icon">📈</div>
+            <div class="fcst-pipe-out-label">kWh Tahmini</div>
+            <div class="fcst-pipe-out-sub">± Güven Aralığı</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrik kartları -->
+      <div class="fcst-info-grid">
+        <div class="fcst-info-card" style="--fcst-accent:var(--accent)">
+          <div class="fcst-info-label">🤖 Model Performansı</div>
+          <div id="fcst-accuracy" class="fcst-info-value" style="color:var(--green)">—</div>
+          <div class="fcst-info-sub">Doğruluk (MAPE tabanlı)</div>
+          <div class="fcst-acc-bar-wrap" style="margin-top:12px"><div id="fcst-acc-bar" class="fcst-acc-bar-fill" style="width:0%"></div></div>
+          <div class="fcst-info-sub" style="margin-top:8px">MAE: <strong id="fcst-mae" style="color:var(--gold)">—</strong></div>
+        </div>
+        <div class="fcst-info-card" style="--fcst-accent:var(--gold)">
+          <div class="fcst-info-label">📈 7 Günlük Trend</div>
+          <div id="fcst-trend-val" class="fcst-info-value">—</div>
+          <div class="fcst-info-sub">Son 7g: <strong id="fcst-trend-last">—</strong> | Önceki: <strong id="fcst-trend-prev">—</strong></div>
+        </div>
+        <div class="fcst-info-card" style="--fcst-accent:var(--red)">
+          <div class="fcst-info-label">⚡ 30 Günlük Pik Tahmin</div>
+          <div id="fcst-peak-val" class="fcst-info-value" style="color:var(--red)">—</div>
+          <div id="fcst-peak-date" class="fcst-info-sub">Tarih: —</div>
+        </div>
+        <div class="fcst-info-card" style="--fcst-accent:var(--green)">
+          <div class="fcst-info-label">📊 Aylık Toplam Tahmin</div>
+          <div id="fcst-monthly-val" class="fcst-info-value" style="color:var(--green)">—</div>
+          <div id="fcst-monthly-sub" class="fcst-info-sub">30 gün</div>
+        </div>
+      </div>
+
+      <!-- Senaryo Seçici -->
+      <div class="fcst-scenario-bar">
+        <span class="fcst-scenario-label">⚙️ Senaryo:</span>
+        <button class="fcst-scenario-btn" onclick="setFcstScenario(0.85, this)">📉 Düşük (−15%)</button>
+        <button class="fcst-scenario-btn active" id="fcst-scen-normal" onclick="setFcstScenario(1.0, this)">➡ Normal</button>
+        <button class="fcst-scenario-btn" onclick="setFcstScenario(1.15, this)">📈 Yüksek (+15%)</button>
+        <span id="fcst-scenario-info" class="fcst-scenario-info">Tahmin değerlerini senaryo ile ölçekle</span>
+      </div>
+
+      <!-- Ana tahmin grafiği + Özellik Önemi + Uyarılar -->
+      <div class="fcst-main-row" style="margin-bottom:28px;">
+        <div class="chart-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <h3>📈 30 Günlük Tahmin — Güven Aralığı ile</h3>
+            <div class="fcst-chart-legend">
+              <span class="fcst-legend-item"><span class="fcst-legend-line fcst-l-hist"></span> Geçmiş</span>
+              <span class="fcst-legend-item"><span class="fcst-legend-line fcst-l-pred"></span> Tahmin</span>
+              <span class="fcst-legend-item"><span class="fcst-legend-ci"></span> %80 CI</span>
+            </div>
+          </div>
+          <div class="chart-container" style="height:340px;"><canvas id="fcst-main-chart"></canvas></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:22px;">
+          <div class="chart-card" style="flex:1;">
+            <h3 style="margin-bottom:16px;">🔬 Özellik Önemi</h3>
+            <p style="font-size:.75rem;color:var(--muted);margin-bottom:14px;">Hangi girdi tahmini daha çok etkiliyor?</p>
+            <div id="fcst-feature-list"></div>
+          </div>
+          <div class="chart-card" style="flex:1;">
+            <h3 style="margin-bottom:14px;">🚨 Uyarılar & Öneriler</h3>
+            <div id="fcst-alerts"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backtest + Saatlik profil -->
+      <div class="fcst-bottom-row" style="margin-bottom:28px;">
+        <div class="chart-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+            <h3>🔄 Backtest — Model Geçmişi Tahmin Etti mi?</h3>
+            <span id="fcst-bt-badge" class="fcst-bt-badge fcst-bt-good"></span>
+          </div>
+          <p style="font-size:.76rem;color:var(--muted);margin-bottom:14px;">Bu günleri model hiç görmeden tahmin etti — gerçekle karşılaştır</p>
+          <div class="chart-container" style="height:280px;"><canvas id="fcst-backtest-chart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3 style="margin-bottom:6px;">⏰ Saatlik Yük Profili — Yarın</h3>
+          <p style="font-size:.76rem;color:var(--muted);margin-bottom:14px;">Bina tipine göre 3 saatlik tahminler</p>
+          <div class="chart-container" style="height:280px;"><canvas id="fcst-hourly-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Node karşılaştırma -->
+      <div class="chart-card" style="margin-bottom:28px;">
+        <h3 style="margin-bottom:16px;">🏠 Tüm Node'lar — Yarınki Tahmin Sıralaması</h3>
+        <div id="fcst-node-list"></div>
+      </div>
+
+    </div>
+
+    <!-- FATURALAR -->
+    <div id="tab-billing" style="display:none">
+
+      <!-- Başlık satırı -->
+      <div class="section-hdr" style="flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;gap:14px;align-items:center;">
+          <h2 style="margin:0;">🧾 Yıllık P2P Fatura Analizi</h2>
+          <select id="bill-month-filter" onchange="renderBilling()" style="background:var(--s2);color:var(--accent);border:1px solid var(--border);padding:8px 14px;border-radius:10px;font-weight:700;outline:none;font-family:inherit;"></select>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 18px;text-align:center;">
+            <div style="color:var(--muted);font-size:.78rem;margin-bottom:4px;">⚡ P2P Birim Fiyat</div>
+            <div id="bill-p2p-price" style="font-weight:800;color:var(--accent);font-size:1.1rem;">—</div>
+          </div>
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 18px;text-align:center;">
+            <div style="color:var(--muted);font-size:.78rem;margin-bottom:4px;">📊 Arz / Talep</div>
+            <div id="bill-supply-ratio" style="font-weight:800;font-size:1.1rem;">—</div>
+          </div>
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 18px;text-align:center;">
+            <div style="color:var(--muted);font-size:.78rem;margin-bottom:4px;">🔋 Şebeke</div>
+            <div id="bill-network-status" style="font-weight:800;font-size:1.1rem;">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Algoritma notu -->
+      <div style="background:rgba(0,122,255,.07);border:1px solid rgba(0,122,255,.2);border-radius:12px;padding:12px 18px;margin-bottom:18px;font-size:.82rem;color:var(--muted);">
+        🤖 <b style="color:var(--accent)">Dinamik Fiyatlandırma:</b> <span id="bill-algo-note">Yükleniyor…</span>
+        <span style="margin-left:8px;opacity:.7">| Şebeke alım: 4.20 ₺/kWh | Şebeke satış: 1.20 ₺/kWh</span>
+      </div>
+
+      <!-- Özet kartları -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+        <div class="card" style="border-left:4px solid var(--red)">
+          <div class="clabel">💸 Tüketici Ödemeleri</div>
+          <div class="cvalue" style="color:var(--red)"><span id="bill-total-expense">—</span> ₺</div>
+          <div class="csub">Bu ay tüm tüketicilerin P2P fatura toplamı</div>
+        </div>
+        <div class="card" style="border-left:4px solid var(--green)">
+          <div class="clabel">💰 Üretici Gelirleri</div>
+          <div class="cvalue" style="color:var(--green)"><span id="bill-total-income">—</span> ₺</div>
+          <div class="csub">Bu ay tüm üreticilerin P2P satış geliri</div>
+        </div>
+      </div>
+
+      <!-- Fatura tablosu -->
+      <div class="chart-card">
+        <table class="btable">
+          <thead>
+            <tr>
+              <th>Yapı</th>
+              <th style="text-align:right">Tüketim (kWh)</th>
+              <th style="text-align:right">Üretim (kWh)</th>
+              <th style="text-align:right">Net Enerji</th>
+              <th style="text-align:right">Fatura / Gelir</th>
+            </tr>
+          </thead>
+          <tbody id="bill-tbody"></tbody>
+        </table>
+        <p style="color:var(--muted);font-size:.75rem;margin-top:12px;">
+          ✅ Gerçek sayaç verisi (Oca–Mar) &nbsp;|&nbsp; 📊 İnsolasyon kalibrasyonlu simülasyon (Nis–Ara)
+        </p>
+      </div>
+    </div>
+
+    <!-- SİMÜLASYON -->
+    <div id="tab-sim" style="display:none">
+      <div class="sim-top-bar">
+        <h2>🏘️ Mikroşebeke Enerji Simülasyonu</h2>
+        <button class="sim-start-btn" id="sim-start-btn" onclick="simToggle()">⚡ Simülasyonu Başlat</button>
+      </div>
+
+      <!-- 1) VERİ GİRİŞ TABLOSU -->
+      <div class="sim-section" style="margin-bottom:25px;" id="sim-input-section">
+        <div class="sim-section-title">📝 Bina Enerji Verilerini Girin</div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);">
+                <th style="text-align:left;padding:10px;color:var(--muted);font-size:.85rem;">Bina</th>
+                <th style="text-align:center;padding:10px;color:var(--green);font-size:.85rem;">☀️ Üretim (kWh)</th>
+                <th style="text-align:center;padding:10px;color:var(--red);font-size:.85rem;">🔌 Tüketim (kWh)</th>
+                <th style="text-align:center;padding:10px;color:var(--muted);font-size:.85rem;">Durum</th>
+              </tr>
+            </thead>
+            <tbody id="sim-input-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2) GLOBAL BAR -->
+      <div class="sim-global-bar">
+        <div class="sim-gstat"><div class="sim-gstat-lbl">⚡ Toplam Arz</div><div class="sim-gstat-val" id="sg-supply">0 kWh</div></div>
+        <div class="sim-gstat"><div class="sim-gstat-lbl">🔌 Toplam Talep</div><div class="sim-gstat-val" id="sg-demand">0 kWh</div></div>
+        <div class="sim-gstat"><div class="sim-gstat-lbl">📊 Arz/Talep</div><div class="sim-gstat-val" id="sg-ratio">—</div></div>
+        <div class="sim-gstat"><div class="sim-gstat-lbl">💰 Ort. Fiyat</div><div class="sim-gstat-val" id="sg-price" style="color:var(--gold)">0 ₺</div></div>
+        <div class="sim-gstat"><div class="sim-gstat-lbl">🌱 CO₂ Tasarrufu</div><div class="sim-gstat-val" id="sg-co2" style="color:var(--green)">0 kg</div></div>
+      </div>
+
+      <!-- 3) MAHALLE GRİD + ANİMASYON -->
+      <div class="sim-world" id="sim-world">
+        <svg class="sim-svg-overlay" id="sim-svg">
+          <defs><filter id="sim-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        </svg>
+        <div class="sim-grid8">
+          <div class="sim-bldg" id="sb0" onclick="simSelect(0)"></div>
+          <div class="sim-road sim-road-v"></div>
+          <div class="sim-bldg" id="sb1" onclick="simSelect(1)"></div>
+          <div class="sim-road sim-road-v"></div>
+          <div class="sim-bldg" id="sb2" onclick="simSelect(2)"></div>
+          <div class="sim-road sim-road-v"></div>
+          <div class="sim-bldg" id="sb3" onclick="simSelect(3)"></div>
+          <div class="sim-road sim-road-h" style="grid-column:1/8"></div>
+          <div class="sim-bldg" id="sb4" onclick="simSelect(4)"></div>
+          <div class="sim-road sim-road-v"></div>
+          <div class="sim-bldg" id="sb5" onclick="simSelect(5)"></div>
+          <div class="sim-road sim-road-v"></div>
+          <div class="sim-bldg" id="sb6" onclick="simSelect(6)"></div>
+          <div class="sim-road sim-road-v"></div>
+          <div class="sim-bldg" id="sb7" onclick="simSelect(7)"></div>
+        </div>
+      </div>
+
+      <!-- 4) DETAY PANELİ (tıklayınca açılır) -->
+      <div id="sim-detail-wrap" style="display:none;">
+        <div class="sim-detail-panel">
+          <div class="sim-section">
+            <div class="sim-section-title"><span id="sim-icon">🏠</span> <span id="sim-name">Bina</span></div>
+            <div class="sim-metrics">
+              <div class="sim-metric"><div class="sim-m-lbl">Üretim</div><div class="sim-m-val" id="sim-prod-v" style="color:var(--green)">0</div></div>
+              <div class="sim-metric"><div class="sim-m-lbl">Tüketim</div><div class="sim-m-val" id="sim-cons-v" style="color:var(--red)">0</div></div>
+              <div class="sim-metric"><div class="sim-m-lbl">Net Enerji</div><div class="sim-m-val" id="sim-net">0</div></div>
+              <div class="sim-metric"><div class="sim-m-lbl">CO₂ Tasarrufu</div><div class="sim-m-val" id="sim-co2" style="color:var(--green)">0</div></div>
+              <div class="sim-metric"><div class="sim-m-lbl">Birim Fiyat</div><div class="sim-m-val" id="sim-price" style="color:var(--gold)">0</div></div>
+              <div class="sim-metric"><div class="sim-m-lbl" id="sim-bill-lbl">Fatura</div><div class="sim-m-val" id="sim-bill">0</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <div id="modal" class="modal"><div class="modal-content" id="modal-body"></div></div>
+
+  <script>
+    const API = window.location.protocol.startsWith('http') ? '' : 'http://localhost:8000';
+    let allNodes = [], historyAll = [], dashboardChart, barChart, analysisTrendChart, analysisBarChart;
+    let fcstMainChart = null, fcstHourlyChart = null, fcstSelectedNode = null;
+    // fcstBacktestChart, _fcstBasePredictions, _fcstScenarioFactor, _fcstHistoryData declared with initForecastTab block
+    const TYPE_ICON  = { school:'🏫', mosque:'🕌', house:'🏠', apartment:'🏢', market:'🏪', office:'🏛️' };
+    const TYPE_COLOR = { school:'#ff453a', mosque:'#ffd60a', house:'#007aff', apartment:'#5e5ce6', market:'#ff9f0a', office:'#30b0c7' };
+
+    function fmt(val) { return val.toLocaleString('tr-TR', { maximumFractionDigits: 1 }); }
+
+    async function switchTab(name) {
+      ['dashboard', 'analiz', 'tahmin', 'billing', 'sim'].forEach(t => {
+        const el = document.getElementById('tab-'+t);
+        if(el) el.style.display = (t===name) ? 'block' : 'none';
+      });
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        const txt = b.textContent.toLowerCase();
+        b.classList.toggle('active',
+          (name==='sim' && txt.includes('sim')) ||
+          (name!=='sim' && txt.includes(name.slice(0,3)))
+        );
+      });
+      if (name === 'analiz') initAnalysisTab();
+      if (name === 'tahmin') initForecastTab();
+      if (name === 'billing') renderBilling();
+      if (name === 'sim') simInit();
+    }
+
+    async function load() {
+      try {
+        [allNodes, summary, historyAll] = await Promise.all([
+          fetch(`${API}/nodes`).then(r => r.json()),
+          fetch(`${API}/summary`).then(r => r.json()),
+          fetch(`${API}/history_all`).then(r => r.json())
+        ]);
+        
+        document.getElementById('m-total').textContent = summary.total_current_kwh.toFixed(1) + ' kWh';
+        document.getElementById('m-solar').textContent = summary.total_solar_kwh.toFixed(1) + ' kWh';
+        document.getElementById('m-net').textContent = summary.total_net_kwh.toFixed(1) + ' kWh';
+        document.getElementById('m-bill').textContent = fmt(summary.total_bill_tl) + ' ₺';
+
+        const mSelect = document.getElementById('bill-month-filter');
+        const monthNames = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+        mSelect.innerHTML = monthNames.map((name,i)=>`<option value="${i}" ${i===6?'selected':''}>${name} ${i<3?'✅':'📊'}</option>`).join('');
+        
+        document.getElementById('node-sel').innerHTML = allNodes.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+        
+        renderGrid();
+        renderBarChart();
+        if (allNodes.length) selectNode(allNodes[0].id);
+        document.getElementById('loading').style.display = 'none';
+      } catch (e) { console.error(e); }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('city-grid');
+      const sorted = allNodes.map(n => n.current_kwh).sort((a,b)=>a-b);
+      const p33 = sorted[Math.floor(sorted.length*0.33)], p66 = sorted[Math.floor(sorted.length*0.66)];
+
+      grid.innerHTML = allNodes.map(n => {
+        const bClass = n.current_kwh <= p33 ? 'b-green' : n.current_kwh <= p66 ? 'b-yellow' : 'b-red';
+        return `
+          <div class="node-card ${bClass}" onclick="openDetail('${n.id}')">
+            <div class="nc-header"><span>${TYPE_ICON[n.type]}</span><span>${n.name}</span></div>
+            <div class="nc-row"><span>Tüketim</span><span class="nc-val">${n.current_kwh.toFixed(1)} kWh</span></div>
+            <div class="nc-row"><span>Üretim</span><span style="color:var(--green)">${n.current_solar_kwh.toFixed(1)} kWh</span></div>
+            <div class="nc-row"><span>Aylık Tahmin</span><span style="color:var(--gold)">${n.predicted_monthly_kwh.toFixed(0)} kWh</span></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectNode(id) {
+      const data = await fetch(`${API}/predict/${id}`).then(r => r.json());
+      const node = allNodes.find(n => n.id === id);
+      const histRaw = data.history.slice(-24);
+      const predRaw = data.predictions.slice(0, 12);
+      const hist = histRaw.map(d => d.consumption_kwh);
+      const pred = predRaw.map(d => d.predicted_kwh);
+      const labels = [
+        ...histRaw.map(d => d.date.slice(5)),   // "MM-DD"
+        ...predRaw.map(d => d.date.slice(5))
+      ];
+
+      if (dashboardChart) dashboardChart.destroy();
+      dashboardChart = new Chart(document.getElementById('dashboard-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Geçmiş', data: [...hist, ...Array(pred.length).fill(null)], borderColor: TYPE_COLOR[node.type], fill: true, backgroundColor: TYPE_COLOR[node.type]+'1a', tension: 0.4, pointRadius:0 },
+            { label: 'Tahmin', data: [...Array(hist.length-1).fill(null), hist.at(-1), ...pred], borderColor: '#ffd60a', borderDash:[5,5], tension: 0.4, pointRadius:0 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#aaa' } } },
+          scales: {
+            x: { ticks: { color: '#888', maxRotation: 45 } },
+            y: { ticks: { color: '#888' }, title: { display: true, text: 'kWh', color: '#666' } }
+          }
+        }
+      });
+    }
+
+    function renderBarChart() {
+      if (barChart) barChart.destroy();
+      barChart = new Chart(document.getElementById('bar-chart'), {
+        type: 'bar',
+        data: {
+          labels: allNodes.map(n => n.name),
+          datasets: [
+            { label: 'Tüketim', data: allNodes.map(n => n.current_kwh), backgroundColor: allNodes.map(n => TYPE_COLOR[n.type]+'cc') },
+            { label: 'Üretim', data: allNodes.map(n => n.current_solar_kwh), backgroundColor: '#30d15855' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    const ANA_MODES = ['node','month','type','solar','eda'];
+    let analysisMode = 'node';
+    let selectedEDANodeId = null;
+
+    const MONTH_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+    const SEASONAL = {
+      house:     [1.20,1.10,0.90,0.82,0.88,1.18,1.42,1.40,1.12,0.90,1.00,1.24],
+      school:    [0.85,1.00,1.10,1.08,0.95,0.22,0.07,0.07,0.90,1.22,1.12,0.88],
+      mosque:    [1.06,1.05,1.12,1.02,1.08,1.06,0.96,0.96,1.02,1.02,1.03,1.08],
+      library:   [0.88,1.00,1.08,1.06,0.95,0.30,0.10,0.10,0.92,1.18,1.10,0.88],
+      apartment: [1.16,1.08,0.92,0.85,0.88,1.12,1.35,1.32,1.08,0.90,1.02,1.18],
+      market:    [1.05,1.02,0.98,0.97,1.00,1.08,1.18,1.20,1.05,0.98,1.00,1.05],
+      office:    [1.15,1.10,1.02,0.98,0.95,0.85,0.70,0.72,0.95,1.05,1.10,1.15],
+    };
+
+    // Isparta 37°N aylık güneş ışınımı — Mar=1.0 normalize (PVGIS/NASA SSE)
+    const INSOLATION = [0.50,0.70,1.00,1.20,1.40,1.50,1.56,1.44,1.16,0.84,0.60,0.44];
+
+    // P2P dinamik fiyatlandırma sınırları (TL/kWh)
+    const GRID_BUY  = 4.20;  // şebekeden alım tarifesi
+    const GRID_SELL = 1.20;  // şebekeye satış tarifesi
+    const P2P_HIGH  = 3.80;  // kıtlık: arz çok düşük → fiyat yüksek
+    const P2P_LOW   = 1.80;  // bolluk: arz çok yüksek → fiyat düşük
+
+    let _annualCache = null;
+
+    const HOURLY_PROFILE = {
+      house:     [0.55,0.44,0.50,0.72,1.00,1.18,1.38,1.24],
+      school:    [0.20,0.15,0.28,1.32,1.52,1.44,0.90,0.28],
+      mosque:    [0.42,0.36,0.82,0.70,0.66,0.62,1.22,1.12],
+      library:   [0.22,0.18,0.30,1.20,1.40,1.38,0.85,0.25],
+      apartment: [0.50,0.36,0.52,0.90,1.10,1.32,2.05,2.90],
+      market:    [0.28,0.22,0.45,1.35,1.72,1.82,2.10,1.28],
+      office:    [0.22,0.16,0.38,1.68,2.10,2.06,1.82,0.88],
+    };
+
+    function computeNodeMonthly(nodeId) {
+      const node = allNodes.find(n => n.id === nodeId);
+      const seasonal = SEASONAL[node?.type] || SEASONAL.house;
+      const recs = historyAll.filter(r => r.node_id === nodeId);
+
+      const actual = {};
+      recs.forEach(r => {
+        const mi = parseInt(r.date.split('-')[1]) - 1;
+        if (!actual[mi]) actual[mi] = { cons:0, solar:0, days:0 };
+        actual[mi].cons  += r.consumption_kwh;
+        actual[mi].solar += r.solar_kwh;
+        actual[mi].days  += 1;
+      });
+
+      const actualVals = Object.values(actual);
+      const avgDaily = actualVals.length
+        ? actualVals.reduce((s,m) => s + m.cons/Math.max(m.days,1), 0) / actualVals.length
+        : (node?.current_kwh || 5);
+
+      // Gerçek aylık veriden panel kapasitesi kalibre et (kWh/insolasyon-birimi)
+      const panelCalib = actualVals.length
+        ? Object.entries(actual)
+            .filter(([,d]) => d.solar > 0)
+            .map(([mi,d]) => d.solar / (d.days * INSOLATION[parseInt(mi)]))
+        : [];
+      const avgPanelFactor = panelCalib.length
+        ? panelCalib.reduce((s,v)=>s+v,0) / panelCalib.length
+        : 0;
+
+      const dpm = [31,28,31,30,31,30,31,31,30,31,30,31];
+      return Array.from({length:12}, (_,mi) => {
+        if (actual[mi]) return { mi, cons:actual[mi].cons, solar:actual[mi].solar, real:true };
+        const cons  = avgDaily * dpm[mi] * seasonal[mi];
+        const solar = avgPanelFactor * dpm[mi] * INSOLATION[mi];
+        return { mi, cons, solar, real:false };
+      });
+    }
+
+    function computeNodeHourly(nodeId) {
+      const node = allNodes.find(n => n.id === nodeId);
+      const pattern = HOURLY_PROFILE[node?.type] || HOURLY_PROFILE.house;
+      const recs = historyAll.filter(r => r.node_id === nodeId);
+      const avgDaily = recs.length
+        ? recs.reduce((s,r) => s+r.consumption_kwh, 0)/recs.length
+        : (node?.current_kwh||5);
+      const pSum = pattern.reduce((s,v)=>s+v,0);
+      return pattern.map((v,i)=>({ label:`${String(i*3).padStart(2,'0')}:00`, val:+(v/pSum*avgDaily).toFixed(2) }));
+    }
+
+    function generateInsights(monthly, node) {
+      const totalCons = monthly.reduce((s,m)=>s+m.cons,0);
+      const avgM = totalCons/12;
+      const summerAvg = (monthly[5].cons+monthly[6].cons+monthly[7].cons)/3;
+      const winterAvg = (monthly[11].cons+monthly[0].cons+monthly[1].cons)/3;
+      const firstQ   = (monthly[0].cons+monthly[1].cons+monthly[2].cons)/3;
+      const lastQ    = (monthly[9].cons+monthly[10].cons+monthly[11].cons)/3;
+      const trendPct = ((lastQ-firstQ)/firstQ)*100;
+      const totalSolar= monthly.reduce((s,m)=>s+m.solar,0);
+      const ins = [];
+
+      if (summerAvg > avgM*1.12)
+        ins.push({e:'⚠️', c:'var(--red)',   t:`Yaz aylarında (Haz–Ağu) tüketim ortalamayı <b>%${((summerAvg/avgM-1)*100).toFixed(0)} aşıyor</b>. Klima yükü dominant.`});
+      if (winterAvg > avgM*1.08)
+        ins.push({e:'🌨️', c:'var(--accent)', t:`Kış aylarında (Ara–Şub) tüketim <b>%${((winterAvg/avgM-1)*100).toFixed(0)}</b> yukarıda. Isıtma yükünü optimize et.`});
+      else if (winterAvg < avgM*0.85)
+        ins.push({e:'📉', c:'var(--green)',  t:`Kış aylarında belirgin tüketim düşüşü var. Mevsimsel talep değişimi normal sınırlarda.`});
+
+      if (Math.abs(trendPct)>4)
+        ins.push({e: trendPct>0?'📈':'📉', c: trendPct>0?'var(--gold)':'var(--green)',
+          t:`Yıl sonu tüketimi yıl başına kıyasla <b>${trendPct>0?'+':''}%${trendPct.toFixed(1)}</b> ${trendPct>0?'artış':'düşüş'} trendinde.`});
+
+      if (totalSolar>0) {
+        const r=(totalSolar/totalCons*100).toFixed(0);
+        ins.push({e:'☀️', c:'var(--gold)', t:`Güneş sistemi yıllık tüketimin <b>%${r}'ini</b> karşılıyor. Yaz dönemi öz tüketim maksimum seviyede.`});
+      }
+
+      const maxM=monthly.reduce((a,b)=>a.cons>b.cons?a:b);
+      const minM=monthly.reduce((a,b)=>a.cons<b.cons?a:b);
+      ins.push({e:'🎯', c:'var(--muted)', t:`Yıllık aralık: <b>${MONTH_TR[minM.mi]}</b> (${minM.cons.toFixed(0)} kWh) ile <b>${MONTH_TR[maxM.mi]}</b> (${maxM.cons.toFixed(0)} kWh) arasında.`});
+
+      return ins;
+    }
+
+    function setAnalysisMode(mode) {
+      analysisMode = mode;
+      ANA_MODES.forEach(m => {
+        document.getElementById('ana-'+m+'-section').style.display = m === mode ? 'block' : 'none';
+        document.getElementById('btn-ana-'+m).classList.toggle('active', m === mode);
+      });
+      initAnalysisTab();
+    }
+
+    async function initAnalysisTab() {
+      if      (analysisMode === 'node')  await renderAnaNode();
+      else if (analysisMode === 'month') await renderAnaMonth();
+      else if (analysisMode === 'type')  await renderAnaType();
+      else if (analysisMode === 'solar') await renderAnaSolar();
+      else if (analysisMode === 'eda')   await renderEDASection();
+    }
+
+    async function renderEDASection() {
+      const scroll = document.getElementById('eda-node-scroll');
+      if (!scroll) return;
+      const NICO = { school:'🏫', mosque:'🕌', house:'🏠', library:'📚' };
+      scroll.innerHTML = allNodes.map(n => `
+        <div class="eda-node-card ${selectedEDANodeId===n.id?'selected':''}" onclick="selectEDANode('${n.id}')">
+          <div class="eda-node-icon">${NICO[n.type]||'🏢'}</div>
+          <div class="eda-node-name">${n.name}</div>
+          <div class="eda-node-sub">${n.current_kwh.toFixed(1)} kWh/gün</div>
+        </div>`).join('');
+
+      if (!selectedEDANodeId) return;
+      const node    = allNodes.find(n=>n.id===selectedEDANodeId);
+      const monthly = computeNodeMonthly(selectedEDANodeId);
+      const hourly  = computeNodeHourly(selectedEDANodeId);
+
+      const totalCons  = monthly.reduce((s,m)=>s+m.cons,0);
+      const totalSolar = monthly.reduce((s,m)=>s+m.solar,0);
+      const avgM    = totalCons/12;
+      const maxMonth= monthly.reduce((a,b)=>a.cons>b.cons?a:b);
+      const minMonth= monthly.reduce((a,b)=>a.cons<b.cons?a:b);
+      const insights= generateInsights(monthly,node);
+
+      const changes = monthly.map((m,i)=>{
+        if(i===0) return null;
+        const pct=((m.cons-monthly[i-1].cons)/monthly[i-1].cons)*100;
+        return {f:i-1,t:i,pct};
+      }).filter(Boolean);
+
+      document.getElementById('eda-dynamic-content').innerHTML = `
+        <div class="eda-kpi-grid">
+          <div class="eda-kpi" style="--kpi-color:var(--accent)">
+            <div class="eda-kpi-label">📦 Yıllık Toplam Tüketim</div>
+            <div class="eda-kpi-value">${(totalCons/1000).toFixed(2)} MWh</div>
+            <div class="eda-kpi-sub">${totalCons.toFixed(0)} kWh / 12 ay</div>
+          </div>
+          <div class="eda-kpi" style="--kpi-color:var(--green)">
+            <div class="eda-kpi-label">☀️ Yıllık Güneş Üretimi</div>
+            <div class="eda-kpi-value">${(totalSolar/1000).toFixed(2)} MWh</div>
+            <div class="eda-kpi-sub">Katkı oranı: %${totalCons>0?(totalSolar/totalCons*100).toFixed(1):0}</div>
+          </div>
+          <div class="eda-kpi" style="--kpi-color:var(--gold)">
+            <div class="eda-kpi-label">📊 Aylık Ortalama</div>
+            <div class="eda-kpi-value">${avgM.toFixed(0)} kWh</div>
+            <div class="eda-kpi-sub">${(avgM/30).toFixed(1)} kWh/gün ortalama</div>
+          </div>
+          <div class="eda-kpi" style="--kpi-color:var(--red)">
+            <div class="eda-kpi-label">🔴 Pik Ay</div>
+            <div class="eda-kpi-value">${MONTH_TR[maxMonth.mi]}</div>
+            <div class="eda-kpi-sub">${maxMonth.cons.toFixed(0)} kWh ${maxMonth.real?'✅':'📊'}</div>
+          </div>
+        </div>
+
+        <div class="eda-charts-row">
+          <div class="eda-chart-card">
+            <h3>📈 Aylık Tüketim & Üretim Trendi (12 Ay)</h3>
+            <div class="eda-chart-wrap"><canvas id="eda-monthly-chart"></canvas></div>
+          </div>
+          <div class="eda-chart-card">
+            <h3>⏰ Günlük Yük Profili (3 Saatlik Dilimler)</h3>
+            <div class="eda-chart-wrap"><canvas id="eda-hourly-chart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="eda-extremes">
+          <div class="eda-extreme-card eda-extreme-max">
+            <div class="eda-extreme-badge" style="color:var(--red)">🔴 En Yüksek Tüketim</div>
+            <div class="eda-extreme-month" style="color:var(--red)">${MONTH_TR[maxMonth.mi]}</div>
+            <div class="eda-extreme-val">${maxMonth.cons.toFixed(1)} kWh &nbsp;·&nbsp; Ortalama +%${((maxMonth.cons/avgM-1)*100).toFixed(0)}</div>
+            <div style="font-size:.77rem;color:var(--muted);margin-top:6px">${maxMonth.real?'✅ Gerçek sayaç verisi':'📊 Mevsimsel tahmin'}</div>
+          </div>
+          <div class="eda-extreme-card eda-extreme-min">
+            <div class="eda-extreme-badge" style="color:var(--green)">🟢 En Düşük Tüketim</div>
+            <div class="eda-extreme-month" style="color:var(--green)">${MONTH_TR[minMonth.mi]}</div>
+            <div class="eda-extreme-val">${minMonth.cons.toFixed(1)} kWh &nbsp;·&nbsp; Ortalama -%${((1-minMonth.cons/avgM)*100).toFixed(0)}</div>
+            <div style="font-size:.77rem;color:var(--muted);margin-top:6px">${minMonth.real?'✅ Gerçek sayaç verisi':'📊 Mevsimsel tahmin'}</div>
+          </div>
+        </div>
+
+        <div class="eda-change-section">
+          <h3>📊 Aylık Değişim Analizi</h3>
+          <div class="eda-change-list">
+            ${changes.map(c=>{
+              const cls=Math.abs(c.pct)<2.5?'eda-pill-flat':c.pct>0?'eda-pill-up':'eda-pill-down';
+              const arr=c.pct>2.5?'↑':c.pct<-2.5?'↓':'→';
+              return `<span class="eda-change-pill ${cls}">${MONTH_TR[c.f].slice(0,3)} → ${MONTH_TR[c.t].slice(0,3)}: ${c.pct>0?'+':''}%${c.pct.toFixed(1)} ${arr}</span>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="eda-insights">
+          <h3>🧠 Akıllı Yorumlar</h3>
+          ${insights.map(ins=>`
+            <div class="eda-insight-item" style="border-color:${ins.c}">
+              <span style="font-size:1.35rem;flex-shrink:0">${ins.e}</span>
+              <span class="eda-insight-text">${ins.t}</span>
+            </div>`).join('')}
+        </div>
+      `;
+
+      /* Monthly Chart */
+      if (window._edaMonthly) window._edaMonthly.destroy();
+      const ptColor = monthly.map(m=>m.mi===maxMonth.mi?'#ff453a':m.mi===minMonth.mi?'#30d158':'#007aff');
+      const ptSize  = monthly.map(m=>m.mi===maxMonth.mi||m.mi===minMonth.mi?8:3);
+      window._edaMonthly = new Chart(document.getElementById('eda-monthly-chart'),{
+        type:'line',
+        data:{
+          labels: MONTH_TR,
+          datasets:[
+            { label:'Tüketim (kWh)', data:monthly.map(m=>+m.cons.toFixed(1)),
+              borderColor:'#007aff', backgroundColor:'rgba(0,122,255,.07)', fill:true, tension:.44,
+              pointRadius:ptSize, pointBackgroundColor:ptColor, pointBorderColor:'#fff', pointBorderWidth:2, borderWidth:2.5 },
+            ...(totalSolar>0?[{ label:'Güneş Üretimi (kWh)', data:monthly.map(m=>+m.solar.toFixed(1)),
+              borderColor:'#30d158', backgroundColor:'rgba(48,209,88,.06)', fill:true, tension:.44,
+              pointRadius:3, borderWidth:2 }]:[])
+          ]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          interaction:{mode:'index',intersect:false},
+          plugins:{
+            legend:{labels:{color:'#ccc',font:{size:11}}},
+            tooltip:{backgroundColor:'#1c212c',borderColor:'#2d3343',borderWidth:1,
+              titleColor:'#fff',bodyColor:'#8e8e93',
+              callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(1)} kWh`}}
+          },
+          scales:{
+            x:{ticks:{color:'#8e8e93',font:{size:11}},grid:{color:'rgba(45,51,67,.4)'}},
+            y:{ticks:{color:'#8e8e93',callback:v=>v.toFixed(0)},grid:{color:'rgba(45,51,67,.6)'}}
+          }
+        }
+      });
+
+      /* Hourly Chart */
+      if (window._edaHourly) window._edaHourly.destroy();
+      window._edaHourly = new Chart(document.getElementById('eda-hourly-chart'),{
+        type:'line',
+        data:{
+          labels:hourly.map(h=>h.label),
+          datasets:[{ label:'Ort. Tüketim (kWh)', data:hourly.map(h=>h.val),
+            borderColor:'#ffd60a', backgroundColor:'rgba(255,214,10,.11)', fill:true, tension:.44,
+            pointRadius:5, pointBackgroundColor:'#ffd60a', pointBorderColor:'#fff', pointBorderWidth:2, borderWidth:2.5 }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{
+            legend:{labels:{color:'#ccc',font:{size:11}}},
+            tooltip:{backgroundColor:'#1c212c',borderColor:'#2d3343',borderWidth:1,
+              titleColor:'#fff',bodyColor:'#8e8e93'}
+          },
+          scales:{
+            x:{ticks:{color:'#8e8e93',font:{size:10}},grid:{color:'rgba(45,51,67,.4)'}},
+            y:{ticks:{color:'#8e8e93',callback:v=>v.toFixed(1)},grid:{color:'rgba(45,51,67,.6)'}}
+          }
+        }
+      });
+    }
+
+    async function selectEDANode(id) {
+      selectedEDANodeId = id;
+      await renderEDASection();
+      document.getElementById('eda-dynamic-content')?.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    async function renderAnaNode() {
+      const data = await fetch(`${API}/analysis`).then(r => r.json());
+      document.getElementById('ana-total').textContent = (data.total_consumption/1000).toFixed(2) + ' MWh';
+      document.getElementById('ana-max').textContent = data.max_consumption.toFixed(1) + ' kWh';
+      const maxId = Object.entries(data.node_comparison).reduce((a,b) => a[1]>b[1]?a:b)[0];
+      document.getElementById('ana-max-node').textContent = allNodes.find(n => n.id === maxId)?.name || '';
+
+      const solarData = await fetch(`${API}/analysis/solar_ratio`).then(r => r.json());
+      const totalSolar = solarData.reduce((s,x) => s + x.solar, 0);
+      document.getElementById('ana-solar-total').textContent = (totalSolar/1000).toFixed(2) + ' MWh';
+
+      if (window.analysisBarChartObj) window.analysisBarChartObj.destroy();
+      window.analysisBarChartObj = new Chart(document.getElementById('analysis-bar-chart'), {
+        type: 'bar',
+        data: {
+          labels: allNodes.map(n => n.name),
+          datasets: [
+            { label: '90 Günlük Tüketim (kWh)', data: allNodes.map(n => data.node_comparison[n.id] || 0), backgroundColor: allNodes.map(n => TYPE_COLOR[n.type]+'bb') },
+            { label: 'Güneş Üretimi (kWh)', data: solarData.map(s => s.solar), backgroundColor: '#30d15866' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color:'#fff' } } }, scales: { x: { ticks:{color:'#aaa'} }, y: { ticks:{color:'#aaa'} } } }
+      });
+    }
+
+    async function renderAnaMonth() {
+      const mData = await fetch(`${API}/monthly`).then(r => r.json());
+      const last = mData[mData.length - 1];
+      const prev = mData[mData.length - 2];
+      const pct = prev ? ((last.total_consumption - prev.total_consumption) / prev.total_consumption * 100) : 0;
+      document.getElementById('ana-month-total').textContent = fmt(last.total_consumption) + ' kWh';
+      document.getElementById('ana-month-bill').textContent = fmt(last.total_bill) + ' ₺';
+      document.getElementById('ana-month-change').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+      document.getElementById('ana-month-change').style.color = pct > 0 ? 'var(--red)' : 'var(--green)';
+      const MONTH_TR = ["","Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+      if (window.analysisMonthChartObj) window.analysisMonthChartObj.destroy();
+      window.analysisMonthChartObj = new Chart(document.getElementById('analysis-month-chart'), {
+        type: 'line',
+        data: {
+          labels: mData.map(m => MONTH_TR[parseInt(m.month)]),
+          datasets: [
+            { label: 'Tüketim (kWh)', data: mData.map(m => m.total_consumption), borderColor: '#007aff', backgroundColor:'#007aff22', fill:true, tension: 0.4 },
+            { label: 'Güneş Üretimi (kWh)', data: mData.map(m => m.total_solar), borderColor: '#30d158', backgroundColor:'#30d15822', fill:true, tension: 0.4 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}} }
+      });
+    }
+
+    async function renderAnaType() {
+      const data = await fetch(`${API}/analysis/type`).then(r => r.json());
+      const TIP_COLOR = { 'Okul':'#ff453a', 'Cami':'#ffd60a', 'Uretici_Ev':'#30d158', 'Tuketici_Ev':'#007aff' };
+      const TIP_ICON  = { 'Okul':'🏫', 'Cami':'🕌', 'Uretici_Ev':'🏠⚡', 'Tuketici_Ev':'🏠' };
+      document.getElementById('ana-type-cards').innerHTML = data.map(t => `
+        <div class="card" style="border-left:4px solid ${TIP_COLOR[t.tip]||'#888'};">
+          <div class="clabel">${TIP_ICON[t.tip]||''} ${t.tip}</div>
+          <div class="cvalue" style="color:${TIP_COLOR[t.tip]||'#fff'}">${(t.total_consumption/1000).toFixed(2)} MWh</div>
+          <div class="csub">Güneş: ${(t.total_solar/1000).toFixed(2)} MWh &nbsp;|&nbsp; Katkı: %${t.solar_ratio}</div>
+        </div>`).join('');
+      if (window.anaTypeChartObj) window.anaTypeChartObj.destroy();
+      window.anaTypeChartObj = new Chart(document.getElementById('analysis-type-chart'), {
+        type: 'bar',
+        data: {
+          labels: data.map(t => t.tip),
+          datasets: [
+            { label: 'Tüketim (kWh)', data: data.map(t => t.total_consumption), backgroundColor: data.map(t => (TIP_COLOR[t.tip]||'#888')+'bb') },
+            { label: 'Güneş Üretimi (kWh)', data: data.map(t => t.total_solar), backgroundColor: '#30d15866' }
+          ]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}} }
+      });
+    }
+
+    async function renderAnaSolar() {
+      const [co2, ratios] = await Promise.all([
+        fetch(`${API}/analysis/co2`).then(r => r.json()),
+        fetch(`${API}/analysis/solar_ratio`).then(r => r.json())
+      ]);
+      document.getElementById('co2-summary-cards').innerHTML = `
+        <div class="co2-card"><div class="co2-lbl">☀️ Toplam Güneş Üretimi</div><div class="co2-val" style="color:var(--gold)">${(co2.total_solar_kwh/1000).toFixed(2)} MWh</div></div>
+        <div class="co2-card"><div class="co2-lbl">🌱 Kurtarılan CO2</div><div class="co2-val" style="color:var(--green)">${fmt(co2.co2_saved_kg)} kg</div></div>
+        <div class="co2-card"><div class="co2-lbl">🌳 Ağaç Eşdeğeri</div><div class="co2-val" style="color:#30d158">${co2.co2_equiv_trees} ağaç</div></div>`;
+
+      document.getElementById('solar-ratio-list').innerHTML = ratios.map(r => {
+        const noPanel = r.solar === 0;
+        if (noPanel) {
+          return `<div class="ratio-row">
+            <span style="font-weight:600;min-width:80px">${r.name}</span>
+            <span style="color:var(--muted);font-size:.85rem">${r.tip}</span>
+            <span style="color:var(--muted);font-size:.8rem;font-style:italic;margin-left:auto">⚡ Sadece tüketici — güneş paneli yok</span>
+          </div>`;
+        }
+        const color = r.ratio >= 80 ? 'var(--green)' : r.ratio >= 40 ? 'var(--gold)' : '#007aff';
+        return `<div class="ratio-row">
+          <span style="font-weight:600;min-width:80px">${r.name}</span>
+          <span style="color:var(--muted);font-size:.85rem">${r.tip}</span>
+          <div class="ratio-bar-wrap"><div class="ratio-bar-fill" style="width:${Math.min(r.ratio,100)}%;background:${color}"></div></div>
+          <span style="font-weight:700;color:${color};min-width:55px;text-align:right">%${r.ratio}</span>
+        </div>`;
+      }).join('');
+
+      if (window.co2BarChartObj) window.co2BarChartObj.destroy();
+      window.co2BarChartObj = new Chart(document.getElementById('co2-bar-chart'), {
+        type: 'bar',
+        data: {
+          labels: co2.by_node.map(n => n.name),
+          datasets: [{ label: 'CO2 Tasarrufu (kg)', data: co2.by_node.map(n => n.co2_saved_kg), backgroundColor: '#30d15888' }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#aaa'}},y:{ticks:{color:'#aaa'}}} }
+      });
+    }
+
+    // ─── Forecast tab state ───────────────────────────────────────────────
+    let fcstBacktestChart = null;
+    let _fcstBasePredictions = [];   // ham tahminler (senaryo öncesi)
+    let _fcstScenarioFactor = 1.0;
+
+    async function initForecastTab() {
+      if (!fcstSelectedNode && allNodes.length > 0) fcstSelectedNode = allNodes[0].id;
+      const scroll = document.getElementById('fcst-node-scroll');
+      scroll.innerHTML = allNodes.map(n => `
+        <div class="fcst-node-card ${n.id === fcstSelectedNode ? 'selected' : ''}"
+             onclick="selectForecastNode('${n.id}', this)">
+          <div class="fcst-node-icon">${TYPE_ICON[n.type] || '🏢'}</div>
+          <div class="fcst-node-name">${n.name}</div>
+          <div class="fcst-node-sub">${n.predicted_next_day_kwh} kWh</div>
+        </div>
+      `).join('');
+      if (fcstSelectedNode) await loadForecastData(fcstSelectedNode);
+    }
+
+    async function selectForecastNode(nodeId, cardEl) {
+      fcstSelectedNode = nodeId;
+      document.querySelectorAll('.fcst-node-card').forEach(c => c.classList.remove('selected'));
+      cardEl.classList.add('selected');
+      await loadForecastData(nodeId);
+    }
+
+    function _fcstOpts(extra = {}) {
+      return Object.assign({
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#c8c8cc', font: { family: 'Outfit', size: 11.5 }, boxWidth: 14, padding: 18,
+            filter: item => item.text !== '_lower' } },
+          tooltip: { backgroundColor: '#1c212c', titleColor: '#fff', bodyColor: '#aaa', borderColor: '#2d3343', borderWidth: 1,
+            filter: item => item.dataset.label !== '_lower' }
+        },
+        scales: {
+          x: { ticks: { color: '#8e8e93', maxTicksLimit: 11, font: { size: 10.5 } }, grid: { color: '#191e28' } },
+          y: { ticks: { color: '#8e8e93', font: { size: 10.5 } }, grid: { color: '#191e28' } }
+        }
+      }, extra);
+    }
+
+    function setFcstScenario(factor, btn) {
+      _fcstScenarioFactor = factor;
+      document.querySelectorAll('.fcst-scenario-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const labels = { 0.85: 'Düşük senaryo: tahminler %15 azaltıldı', 1.0: 'Normal senaryo aktif', 1.15: 'Yüksek senaryo: tahminler %15 artırıldı' };
+      document.getElementById('fcst-scenario-info').textContent = labels[factor] || '';
+      if (_fcstBasePredictions.length) _renderForecastChart();
+    }
+
+    function _applyScenario(preds) {
+      return preds.map(p => ({
+        ...p,
+        predicted_kwh: +(p.predicted_kwh * _fcstScenarioFactor).toFixed(2),
+        lower: +(p.lower * _fcstScenarioFactor).toFixed(2),
+        upper: +(p.upper * _fcstScenarioFactor).toFixed(2),
+      }));
+    }
+
+    let _fcstHistoryData = [];
+
+    function _renderForecastChart() {
+      const preds = _applyScenario(_fcstBasePredictions);
+      const hist  = _fcstHistoryData;
+      const H = hist.length, P = preds.length;
+      const labels = [...hist.map(h => h.date.slice(5)), ...preds.map(p => p.date.slice(5))];
+
+      const histLine = [...hist.map(h => h.consumption_kwh), ...Array(P).fill(null)];
+      const lastH    = hist.at(-1)?.consumption_kwh ?? null;
+      const predLine = [...Array(H - 1).fill(null), lastH, ...preds.map(p => p.predicted_kwh)];
+      const lowerCI  = [...Array(H - 1).fill(null), lastH, ...preds.map(p => p.lower)];
+      const upperCI  = [...Array(H - 1).fill(null), lastH, ...preds.map(p => p.upper)];
+
+      if (fcstMainChart) fcstMainChart.destroy();
+      fcstMainChart = new Chart(document.getElementById('fcst-main-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '_lower', data: lowerCI, borderColor: 'rgba(0,0,0,0)', backgroundColor: 'rgba(0,0,0,0)', pointRadius: 0, fill: false, tension: 0.35 },
+            { label: '%80 Güven Aralığı', data: upperCI, borderColor: 'rgba(0,0,0,0)', backgroundColor: 'rgba(255,214,10,0.13)', pointRadius: 0, fill: '-1', tension: 0.35 },
+            { label: 'ML Tahmini (kWh)', data: predLine, borderColor: '#ffd60a', backgroundColor: 'transparent', borderWidth: 2.5, borderDash: [7, 4], pointRadius: 0, pointHoverRadius: 5, tension: 0.35 },
+            { label: 'Gerçek Geçmiş (kWh)', data: histLine, borderColor: '#007aff', backgroundColor: 'rgba(0,122,255,0.07)', borderWidth: 2, fill: true, pointRadius: 0, pointHoverRadius: 5, tension: 0.35 },
+          ]
+        },
+        options: _fcstOpts({ plugins: { ..._fcstOpts().plugins, annotation: {
+          annotations: { todayLine: {
+            type: 'line', xMin: H - 1, xMax: H - 1,
+            borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1.5, borderDash: [4, 4],
+          }}
+        }}})
+      });
+
+      // Pik ve aylık güncelle
+      const maxP = preds.reduce((a, b) => a.predicted_kwh > b.predicted_kwh ? a : b);
+      document.getElementById('fcst-peak-val').textContent = maxP.predicted_kwh + ' kWh';
+      document.getElementById('fcst-peak-date').textContent = 'Tarih: ' + maxP.date;
+      const tot = preds.reduce((s, p) => s + p.predicted_kwh, 0).toFixed(1);
+      document.getElementById('fcst-monthly-val').textContent = tot + ' kWh';
+      document.getElementById('fcst-monthly-sub').textContent = `Ort. ${(tot / preds.length).toFixed(1)} kWh/gün`;
+    }
+
+    async function loadForecastData(nodeId) {
+      const data = await fetch(`${API}/forecast/${nodeId}`).then(r => r.json());
+
+      // Pipeline badge güncelle
+      document.getElementById('fcst-pipe-acc-sub').textContent = `acc: %${data.metrics.accuracy}`;
+
+      // Metrikler
+      document.getElementById('fcst-accuracy').textContent = `%${data.metrics.accuracy}`;
+      document.getElementById('fcst-mae').textContent = `${data.metrics.mae} kWh`;
+      document.getElementById('fcst-acc-bar').style.width = data.metrics.accuracy + '%';
+
+      // Trend
+      const td = data.trend;
+      const tIcon = td.direction === 'artış' ? '↑' : td.direction === 'düşüş' ? '↓' : '→';
+      const tCls  = td.direction === 'artış' ? 'fcst-trend-up' : td.direction === 'düşüş' ? 'fcst-trend-down' : 'fcst-trend-flat';
+      document.getElementById('fcst-trend-val').innerHTML =
+        `<span class="${tCls}">${tIcon} ${td.direction}</span> <span style="font-size:.88rem;color:var(--muted)">%${td.percent}</span>`;
+      document.getElementById('fcst-trend-last').textContent = td.last_7_avg + ' kWh';
+      document.getElementById('fcst-trend-prev').textContent = td.prev_7_avg + ' kWh';
+
+      // Ana grafik
+      _fcstBasePredictions = data.predictions;
+      _fcstHistoryData     = data.history;
+      _fcstScenarioFactor  = 1.0;
+      document.querySelectorAll('.fcst-scenario-btn').forEach((b, i) => b.classList.toggle('active', i === 1));
+      _renderForecastChart();
+
+      // Özellik önemi
+      document.getElementById('fcst-feature-list').innerHTML = data.feature_importance.map(f => `
+        <div class="fcst-feat-item">
+          <div class="fcst-feat-header">
+            <span class="fcst-feat-name">${f.feature}</span>
+            <span class="fcst-feat-pct">%${f.importance_pct}</span>
+          </div>
+          <div class="fcst-feat-bar-wrap"><div class="fcst-feat-bar-fill" style="width:${f.importance_pct}%"></div></div>
+        </div>
+      `).join('');
+
+      // Uyarılar
+      const alertsDiv = document.getElementById('fcst-alerts');
+      if (!data.alerts.length) {
+        alertsDiv.innerHTML = `<div class="fcst-alert-item fcst-alert-good"><span class="fcst-alert-icon">✅</span><span class="fcst-alert-text">Anormal durum tespit edilmedi.</span></div>`;
+      } else {
+        alertsDiv.innerHTML = data.alerts.map(a => {
+          const cls = a.severity === 'high' ? 'fcst-alert-high' : a.severity === 'warning' ? 'fcst-alert-warning' : a.severity === 'good' ? 'fcst-alert-good' : 'fcst-alert-info';
+          return `<div class="fcst-alert-item ${cls}"><span class="fcst-alert-icon">${a.icon}</span><span class="fcst-alert-text">${a.message}</span></div>`;
+        }).join('');
+      }
+
+      // Backtest grafiği
+      const bt = data.backtest;
+      const avgErr = bt.reduce((s, b) => s + b.error_pct, 0) / (bt.length || 1);
+      const btBadge = document.getElementById('fcst-bt-badge');
+      btBadge.textContent = avgErr < 10 ? `✅ Ort. hata %${avgErr.toFixed(1)}` : avgErr < 20 ? `⚠️ Ort. hata %${avgErr.toFixed(1)}` : `❌ Ort. hata %${avgErr.toFixed(1)}`;
+      btBadge.className = 'fcst-bt-badge ' + (avgErr < 10 ? 'fcst-bt-good' : avgErr < 20 ? 'fcst-bt-warn' : 'fcst-bt-bad');
+
+      if (fcstBacktestChart) fcstBacktestChart.destroy();
+      fcstBacktestChart = new Chart(document.getElementById('fcst-backtest-chart'), {
+        type: 'line',
+        data: {
+          labels: bt.map(b => b.date.slice(5)),
+          datasets: [
+            { label: 'Gerçek (kWh)', data: bt.map(b => b.actual_kwh), borderColor: '#007aff', backgroundColor: 'rgba(0,122,255,0.08)', fill: true, borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
+            { label: 'Tahmin (kWh)', data: bt.map(b => b.predicted_kwh), borderColor: '#ffd60a', borderDash: [6, 4], borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 5 }
+          ]
+        },
+        options: _fcstOpts()
+      });
+
+      // Saatlik grafik
+      const maxH = Math.max(...data.hourly.map(h => h.predicted_kwh));
+      if (fcstHourlyChart) fcstHourlyChart.destroy();
+      fcstHourlyChart = new Chart(document.getElementById('fcst-hourly-chart'), {
+        type: 'bar',
+        data: {
+          labels: data.hourly.map(h => h.hour),
+          datasets: [{
+            label: '3 Saatlik Tahmin (kWh)',
+            data: data.hourly.map(h => h.predicted_kwh),
+            backgroundColor: data.hourly.map(h => h.predicted_kwh === maxH ? 'rgba(255,69,58,0.75)' : 'rgba(0,122,255,0.5)'),
+            borderColor: data.hourly.map(h => h.predicted_kwh === maxH ? '#ff453a' : '#007aff'),
+            borderWidth: 1.5, borderRadius: 8, borderSkipped: false,
+          }]
+        },
+        options: _fcstOpts()
+      });
+
+      // Node listesi
+      const sorted = [...data.all_nodes_forecast].sort((a, b) => b.predicted_tomorrow_kwh - a.predicted_tomorrow_kwh);
+      const maxKwh = sorted[0]?.predicted_tomorrow_kwh || 1;
+      document.getElementById('fcst-node-list').innerHTML = sorted.map((n, i) => `
+        <div class="fcst-node-row ${n.is_highest ? 'fcst-node-highlight' : ''}">
+          <span class="fcst-node-row-icon">${TYPE_ICON[n.type] || '🏢'}</span>
+          <span class="fcst-node-row-name">${n.name}${n.is_highest ? '<span class="fcst-node-badge">MAX</span>' : ''}</span>
+          <div class="fcst-node-row-bar">
+            <div class="fcst-node-row-fill" style="width:${(n.predicted_tomorrow_kwh / maxKwh * 100).toFixed(1)}%;background:${n.is_highest ? 'var(--red)' : i < 2 ? 'var(--gold)' : 'var(--accent)'}"></div>
+          </div>
+          <span class="fcst-node-row-val" style="color:${n.is_highest ? 'var(--red)' : 'var(--text)'}">
+            ${n.predicted_tomorrow_kwh.toFixed(1)} kWh
+          </span>
+        </div>
+      `).join('');
+
+      document.getElementById('fcst-last-updated').textContent = 'Son güncelleme: ' + new Date().toLocaleTimeString('tr-TR');
+    }
+
+    function buildAnnualBillingData() {
+      if (_annualCache) return _annualCache;
+      const dpm = [31,28,31,30,31,30,31,31,30,31,30,31];
+
+      // Gerçek aylık veriler (historyAll, 3 ay)
+      const nodeActuals = {};
+      allNodes.forEach(n => { nodeActuals[n.id] = {}; });
+      historyAll.forEach(r => {
+        const mi = parseInt(r.date.split('-')[1]) - 1;
+        if (!nodeActuals[r.node_id]) return;
+        if (!nodeActuals[r.node_id][mi]) nodeActuals[r.node_id][mi] = {cons:0,solar:0,days:0};
+        nodeActuals[r.node_id][mi].cons  += r.consumption_kwh;
+        nodeActuals[r.node_id][mi].solar += r.solar_kwh;
+        nodeActuals[r.node_id][mi].days  += 1;
+      });
+
+      // Her node için 12 aylık projeksiyon
+      const nodeMonthly = {};
+      allNodes.forEach(node => {
+        const actual = nodeActuals[node.id] || {};
+        const vals   = Object.values(actual);
+        const avgD   = vals.length ? vals.reduce((s,m)=>s+m.cons/Math.max(m.days,1),0)/vals.length : node.current_kwh;
+        const calib  = Object.entries(actual).filter(([,d])=>d.solar>0).map(([mi,d])=>d.solar/(d.days*INSOLATION[+mi]));
+        const avgPF  = calib.length ? calib.reduce((s,v)=>s+v,0)/calib.length : 0;
+        const seas   = SEASONAL[node.type] || SEASONAL.house;
+        nodeMonthly[node.id] = Array.from({length:12},(_,mi)=>{
+          if (actual[mi]) return {cons:actual[mi].cons, solar:actual[mi].solar, real:true};
+          return {cons:avgD*dpm[mi]*seas[mi], solar:avgPF*dpm[mi]*INSOLATION[mi], real:false};
+        });
+      });
+
+      // Aylık ağ istatistikleri + dinamik fiyat + node faturası
+      _annualCache = Array.from({length:12},(_,mi)=>{
+        const netCons  = allNodes.reduce((s,n)=>s+nodeMonthly[n.id][mi].cons,0);
+        const netSolar = allNodes.reduce((s,n)=>s+nodeMonthly[n.id][mi].solar,0);
+        const sr       = netCons>0 ? netSolar/netCons : 0;   // arz/talep oranı
+        const t        = Math.min(1, sr/1.5);
+        const p2p      = P2P_HIGH-(P2P_HIGH-P2P_LOW)*t;      // dinamik P2P fiyatı
+        const netDef   = Math.max(0, netCons-netSolar);       // ağ toplam açığı
+        const netSur   = Math.max(0, netSolar-netCons);       // ağ toplam fazlası
+
+        const nodes = allNodes.map(node=>{
+          const {cons,solar,real} = nodeMonthly[node.id][mi];
+          const deficit  = Math.max(0,cons-solar);
+          const surplus  = Math.max(0,solar-cons);
+          let bill;
+          if (deficit>0) {
+            // Net tüketici: açığını P2P'den dinamik fiyatla alır
+            bill = deficit * p2p;
+          } else {
+            // Net üretici: fazlasını satar
+            // Ağda açık varsa → P2P fiyatıyla sat; fazla varsa → şebekeye sat
+            const p2pFrac = netSolar>0 ? Math.min(1, netDef/netSolar) : 0;
+            bill = -(surplus*(p2pFrac*p2p + (1-p2pFrac)*GRID_SELL));
+          }
+          return {node,cons,solar,deficit,surplus,bill,real};
+        });
+
+        return {mi, netCons, netSolar, sr, p2p, netDef, netSur, nodes};
+      });
+      return _annualCache;
+    }
+
+    function renderBilling() {
+      if (!allNodes.length) return;
+      const mi     = parseInt(document.getElementById('bill-month-filter').value);
+      const annual = buildAnnualBillingData();
+      const month  = annual[mi];
+
+      // Fiyat gösterge kartları
+      document.getElementById('bill-p2p-price').textContent = month.p2p.toFixed(2)+' ₺/kWh';
+      const srPct = (month.sr*100).toFixed(0);
+      document.getElementById('bill-supply-ratio').textContent = '%'+srPct+' arz';
+      const statusEl = document.getElementById('bill-network-status');
+      if (month.netSur > 0) {
+        statusEl.textContent = '↑ Arz Fazlası'; statusEl.style.color='var(--green)';
+      } else {
+        statusEl.textContent = '↓ Talep Fazlası'; statusEl.style.color='var(--gold)';
+      }
+      // Algoritma açıklaması
+      const algoEl = document.getElementById('bill-algo-note');
+      if (algoEl) {
+        const srN = month.sr.toFixed(2);
+        algoEl.textContent = `Arz/Talep=${srN} → P2P fiyat=${month.p2p.toFixed(2)} ₺/kWh | [${P2P_HIGH.toFixed(2)} (kıtlık) — ${P2P_LOW.toFixed(2)} (bolluk)] aralığında dinamik.`;
+      }
+
+      const sorted = [...month.nodes].sort((a,b)=>b.cons-a.cons);
+      const maxC = Math.max(...sorted.map(x=>x.cons),1);
+      const maxS = Math.max(...sorted.map(x=>x.solar),1);
+      let totalExp=0, totalInc=0;
+
+      document.getElementById('bill-tbody').innerHTML = sorted.map(d=>{
+        if (d.bill>0) totalExp+=d.bill; else totalInc+=Math.abs(d.bill);
+        const billColor = d.bill>0 ? 'var(--red)' : 'var(--green)';
+        const billTxt   = d.bill>0
+          ? `${fmt(d.bill)} ₺`
+          : `<span style="color:var(--green)">+${fmt(Math.abs(d.bill))} ₺</span> <span style="font-size:.72rem;color:var(--muted)">gelir</span>`;
+        const netKwh  = d.deficit>0 ? `<span style="color:var(--red)">+${d.deficit.toFixed(0)}</span>` : `<span style="color:var(--green)">-${d.surplus.toFixed(0)}</span>`;
+        const realTag = d.real ? '' : ' <span style="font-size:.68rem;color:var(--muted)">📊</span>';
+        return `
+        <tr onclick="openDetail('${d.node.id}')">
+          <td style="font-weight:700">${TYPE_ICON[d.node.type]||'🏢'} ${d.node.name}${realTag}</td>
+          <td style="text-align:right">${d.cons.toFixed(0)} kWh
+            <div class="bar-mini"><div class="bar-mini-fill" style="width:${(d.cons/maxC)*100}%;background:var(--accent)"></div></div></td>
+          <td style="text-align:right;color:var(--green)">${d.solar.toFixed(0)} kWh
+            <div class="bar-mini"><div class="bar-mini-fill" style="width:${(d.solar/maxS)*100}%;background:var(--green)"></div></div></td>
+          <td style="text-align:right;font-weight:700">${netKwh} kWh</td>
+          <td style="text-align:right;font-weight:800;color:${billColor}">${billTxt}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('bill-total-expense').textContent = fmt(totalExp);
+      document.getElementById('bill-total-income').textContent  = fmt(totalInc);
+    }
+
+    function openDetail(id) {
+      const n = allNodes.find(x => x.id === id);
+      document.getElementById('modal-body').innerHTML = `
+        <h2 style="margin-bottom:20px; color:var(--accent)">${n.name} Özeti</h2>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="nc-row"><span>Günlük Tüketim</span><span>${n.current_kwh.toFixed(1)} kWh</span></div>
+          <div class="nc-row"><span>Güneş Üretimi</span><span style="color:var(--green)">${n.current_solar_kwh.toFixed(1)} kWh</span></div>
+          <div class="nc-row" style="border-top:1px solid var(--border); padding-top:15px; margin-top:5px;">
+            <span style="font-weight:700">Aylık Tahmini Fatura</span><span style="color:var(--gold); font-weight:800">${fmt(n.bill_tl)} ₺</span>
+          </div>
+        </div>
+        <button onclick="closeModal()" style="width:100%; padding:15px; margin-top:25px; background:var(--s2); border:1px solid var(--border); color:white; border-radius:15px; cursor:pointer;">Kapat</button>
+      `;
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    /* ══════════════ SİMÜLASYON ENGINE ══════════════ */
+    const SIM_CO2_K = 0.52; // kg CO2 per kWh
+    const SB=[
+      {name:'Ev 1',icon:'🏠',prod:0,cons:0},{name:'Ev 2',icon:'🏡',prod:0,cons:0},
+      {name:'Ev 3',icon:'🏠',prod:0,cons:0},{name:'Ev 4',icon:'🏡',prod:0,cons:0},
+      {name:'Ev 5',icon:'🏠',prod:0,cons:0},{name:'Ev 6',icon:'🏡',prod:0,cons:0},
+      {name:'Ev 7',icon:'🏠',prod:0,cons:0},{name:'Ev 8',icon:'🏡',prod:0,cons:0}
+    ];
+    let simRunning=false, simAnimId=null;
+
+    // P2P fiyat hesapla (Faturalar sekmesiyle aynı model)
+    function simCalcP2P(){
+      const tS=SB.reduce((s,b)=>s+b.prod,0);
+      const tD=SB.reduce((s,b)=>s+b.cons,0);
+      const sr=tD>0?tS/tD:0;
+      const t=Math.min(1,sr/1.5);
+      return P2P_HIGH-(P2P_HIGH-P2P_LOW)*t; // 3.80 (kıtlık) — 1.80 (bolluk)
+    }
+
+    function simInit(){
+      const tbody=document.getElementById('sim-input-tbody');
+      if(tbody && tbody.children.length===0){
+        tbody.innerHTML=SB.map((b,i)=>`
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;font-weight:700;">${b.icon} ${b.name}</td>
+            <td style="text-align:center;padding:8px;"><input type="number" id="si-p${i}" value="${b.prod}" min="0" step="0.5" oninput="simInputChange()" style="background:var(--bg);border:1px solid var(--border);color:var(--green);padding:8px 12px;border-radius:10px;width:90px;font-size:1rem;font-weight:700;text-align:center;outline:none;"></td>
+            <td style="text-align:center;padding:8px;"><input type="number" id="si-c${i}" value="${b.cons}" min="0" step="0.5" oninput="simInputChange()" style="background:var(--bg);border:1px solid var(--border);color:var(--red);padding:8px 12px;border-radius:10px;width:90px;font-size:1rem;font-weight:700;text-align:center;outline:none;"></td>
+            <td style="text-align:center;padding:8px;" id="si-st${i}"><span style="color:var(--muted)">—</span></td>
+          </tr>`).join('');
+      }
+      SB.forEach((b,i)=>{
+        const el=document.getElementById('sb'+i); if(!el) return;
+        el.innerHTML=`<div class="sim-bldg-icon">${b.icon}</div><div class="sim-bldg-name">${b.name}</div>
+          <div class="sim-bldg-vals" id="sv${i}">☀️ 0 | 🔌 0</div><div class="sim-bldg-stat" id="ss${i}">—</div>`;
+      });
+    }
+
+    function simInputChange(){
+      SB.forEach((b,i)=>{
+        b.prod=parseFloat(document.getElementById('si-p'+i).value)||0;
+        b.cons=parseFloat(document.getElementById('si-c'+i).value)||0;
+        const net=b.prod-b.cons;
+        const stEl=document.getElementById('si-st'+i);
+        if(net>1) stEl.innerHTML='<span style="color:var(--green)">☀️ Üretici</span>';
+        else if(net<-1) stEl.innerHTML='<span style="color:var(--red)">🔌 Tüketici</span>';
+        else stEl.innerHTML='<span style="color:var(--gold)">⚖️ Dengeli</span>';
+      });
+      simRefresh();
+    }
+
+    function simToggle(){
+      SB.forEach((b,i)=>{
+        b.prod=parseFloat(document.getElementById('si-p'+i).value)||0;
+        b.cons=parseFloat(document.getElementById('si-c'+i).value)||0;
+      });
+      simRunning=!simRunning;
+      const btn=document.getElementById('sim-start-btn');
+      const world=document.getElementById('sim-world');
+      if(simRunning){
+        btn.textContent='⏹ Simülasyonu Durdur'; btn.classList.add('running');
+        simRefresh();
+        // BAŞLAT EFEKTİ: binalar sırayla yanıp sönsün
+        SB.forEach((_,i)=>{
+          const el=document.getElementById('sb'+i);
+          setTimeout(()=>{
+            el.style.transition='0.3s';
+            el.style.transform='scale(1.12)';
+            el.style.boxShadow='0 0 30px rgba(48,209,88,0.4)';
+            setTimeout(()=>{ el.style.transform=''; el.style.boxShadow=''; },400);
+          }, i*120);
+        });
+        world.style.border='1px solid var(--green)';
+        world.style.boxShadow='0 0 40px rgba(48,209,88,0.08)';
+        setTimeout(()=>simAnimate(),1000);
+      } else {
+        btn.textContent='⚡ Simülasyonu Başlat'; btn.classList.remove('running');
+        cancelAnimationFrame(simAnimId);
+        document.getElementById('sim-svg').innerHTML='<defs><filter id="sim-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+        world.style.border='1px solid var(--border)';
+        world.style.boxShadow='none';
+      }
+    }
+
+    function simSelect(idx){
+      const b=SB[idx], p2p=simCalcP2P();
+      document.querySelectorAll('.sim-bldg').forEach(e=>e.classList.remove('sim-active'));
+      document.getElementById('sb'+idx).classList.add('sim-active');
+      document.getElementById('sim-detail-wrap').style.display='block';
+      document.getElementById('sim-icon').textContent=b.icon;
+      document.getElementById('sim-name').textContent=b.name;
+      document.getElementById('sim-prod-v').textContent=b.prod.toFixed(1)+' kWh';
+      document.getElementById('sim-cons-v').textContent=b.cons.toFixed(1)+' kWh';
+      const net=b.prod-b.cons, co2=b.prod*SIM_CO2_K;
+      const deficit=Math.max(0,b.cons-b.prod), surplus=Math.max(0,b.prod-b.cons);
+      let bill;
+      if(deficit>0) bill=deficit*p2p; // tüketici: açığını P2P fiyatla öder
+      else bill=-(surplus*p2p);        // üretici: fazlasını P2P fiyatla satar (kazanç)
+
+      document.getElementById('sim-net').textContent=net.toFixed(1)+' kWh';
+      document.getElementById('sim-net').style.color=net>=0?'var(--green)':'var(--red)';
+      document.getElementById('sim-co2').textContent=co2.toFixed(1)+' kg';
+      document.getElementById('sim-price').textContent=p2p.toFixed(2)+' ₺/kWh';
+      const bl=document.getElementById('sim-bill-lbl'), bv=document.getElementById('sim-bill');
+      if(bill>0){ bl.textContent='Fatura'; bv.textContent=bill.toFixed(1)+' ₺'; bv.style.color='var(--red)'; }
+      else { bl.textContent='Kazanç'; bv.textContent=Math.abs(bill).toFixed(1)+' ₺'; bv.style.color='var(--green)'; }
+      document.getElementById('sim-detail-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    function simRefresh(){
+      const p2p=simCalcP2P();
+      let tS=0,tD=0,tCo=0;
+      SB.forEach((b,i)=>{
+        tS+=b.prod; tD+=b.cons; tCo+=b.prod*SIM_CO2_K;
+        const net=b.prod-b.cons, el=document.getElementById('sb'+i), st=document.getElementById('ss'+i), sv=document.getElementById('sv'+i);
+        if(!el||!st) return;
+        if(sv) sv.textContent='☀️ '+b.prod+' | 🔌 '+b.cons;
+        el.classList.remove('sim-surplus','sim-deficit','sim-balanced');
+        if(net>1){el.classList.add('sim-surplus');st.textContent='SATIYOR';st.style.color='var(--green)';}
+        else if(net<-1){el.classList.add('sim-deficit');st.textContent='ALIYOR';st.style.color='var(--red)';}
+        else{el.classList.add('sim-balanced');st.textContent='DENGELİ';st.style.color='var(--gold)';}
+      });
+      const sr=tD>0?(tS/tD*100).toFixed(0):'0';
+      document.getElementById('sg-supply').textContent=tS.toFixed(1)+' kWh';
+      document.getElementById('sg-demand').textContent=tD.toFixed(1)+' kWh';
+      document.getElementById('sg-ratio').textContent='%'+sr;
+      document.getElementById('sg-ratio').style.color=tS>=tD?'var(--green)':'var(--red)';
+      document.getElementById('sg-price').textContent=p2p.toFixed(2)+' ₺/kWh';
+      document.getElementById('sg-co2').textContent=tCo.toFixed(1)+' kg';
+    }
+
+    function simAnimate(){
+      if(!simRunning) return;
+      const svg=document.getElementById('sim-svg'), world=document.getElementById('sim-world'), wr=world.getBoundingClientRect();
+      const centers=SB.map((_,i)=>{
+        const el=document.getElementById('sb'+i), r=el.getBoundingClientRect();
+        return {x:r.left-wr.left+r.width/2, y:r.top-wr.top+r.height/2};
+      });
+      const surplus=[], deficit=[];
+      SB.forEach((b,i)=>{ if(b.prod-b.cons>1)surplus.push(i); if(b.cons-b.prod>1)deficit.push(i); });
+
+      let s='<defs><filter id="sim-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+      const t=Date.now();
+      surplus.forEach(si=>{
+        deficit.forEach(di=>{
+          const f=centers[si], to=centers[di];
+          s+=`<line x1="${f.x}" y1="${f.y}" x2="${to.x}" y2="${to.y}" stroke="#30d158" stroke-width="1.5" opacity="0.15" filter="url(#sim-glow)"/>`;
+          for(let p=0;p<3;p++){
+            const pr=((t/2000+p/3)%1), px=f.x+(to.x-f.x)*pr, py=f.y+(to.y-f.y)*pr;
+            s+=`<circle cx="${px}" cy="${py}" r="4" fill="#30d158" opacity="${Math.sin(pr*Math.PI).toFixed(2)}" filter="url(#sim-glow)"/>`;
+          }
+        });
+      });
+      svg.innerHTML=s;
+      simAnimId=requestAnimationFrame(simAnimate);
+    }
+
+
+    load();
+  </script>
+</body>
+</html>
